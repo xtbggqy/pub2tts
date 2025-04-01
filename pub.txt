@@ -71,7 +71,7 @@ article_sort=impact_factor
 max_articles=3
 
 # AI模型名称
-ai_model=qwen-plus
+ai_model=qwen-turbo
 
 # AI调用超时时间(秒)
 ai_timeout=60
@@ -84,6 +84,12 @@ api_key=
 
 # API基础URL
 api_base_url=https://dashscope.aliyuncs.com/compatible-mode/v1
+
+# API价格设置（单位：元/百万tokens）
+# 输入token价格
+api_price_input=0.3
+# 输出token价格
+api_price_output=0.6
 
 #===============================
 # 语音合成(TTS)设置
@@ -100,6 +106,9 @@ tts_format=mp3
 
 # 音频采样率
 tts_sample_rate=48000
+
+# TTS API价格设置（元/万字符，超过免费额度后）
+tts_price=1.0  # 语音合成价格，每月前三万字符免费，超出后按此价格计费
 
 # 是否处理整个目录(yes/no)
 process_directory=no

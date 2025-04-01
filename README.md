@@ -2,7 +2,7 @@
 
 一个用于自动化PubMed文献检索、处理、翻译和语音合成的集成工具。
 
-## 项目简介
+## 一、项目简介
 
 该系统实现了从PubMed检索文献到生成语音合成的全流程自动化处理，主要包括以下功能：
 
@@ -11,7 +11,7 @@
 3. **文献翻译**：调用AI将英文文献的标题、关键词和摘要翻译成中文
 4. **语音合成**：将翻译后的内容转换为语音文件
 
-## 系统要求
+## 二、系统要求
 
 - Python 3.7+
 - 需要安装的第三方库（可通过`pip install -r requirements.txt`安装）:
@@ -20,18 +20,54 @@
   - biopython
   - tqdm
   - python-dotenv
+  - tiktoken
 
-## 快速开始
+## 三、快速开始
 
-1. 克隆或下载代码到本地
-2. 在`pub.txt`中配置相关参数，特别是API密钥
-3. 运行主程序执行全流程：
+1. **获取代码**
+   - 下载本项目的ZIP压缩包并解压
+   - 或使用Git克隆:
+     ```bash
+     git clone https://github.com/username/pubmed-processor.git
+     cd pubmed-processor
+     ```
 
-```bash
-python main.py
-```
+2. **安装依赖**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## 配置文件
+3. **配置参数**
+   - 打开`pub.txt`文件进行配置
+   - 必须配置的项目:
+     - `api_key`: 阿里云通义千问API密钥 (从[阿里云百炼平台](https://bailian.console.aliyun.com/)获取)
+     - `query`: PubMed搜索关键词 (如"cancer therapy")
+   - 可选配置:
+     - `max_results`: 检索文献数量 (默认30篇)
+     - `time_period`: 文献发表时间范围 (默认2年内)
+     - `max_articles`: 需要翻译的文章数 (默认3篇)
+
+4. **运行程序**
+   ```bash
+   python main.py
+   ```
+   - 使用`-v`参数可查看详细日志: `python main.py -v`
+   - 使用`-s`参数可单独执行某一步骤: `python main.py -s translate`
+
+5. **查看结果**
+   - 所有输出文件保存在`out`文件夹
+   - 处理3篇文献全流程约需2-3分钟 (夜间API调用较少时约1分钟)
+   - 生成的音频文件位于`out`文件夹中
+
+6. **关于API成本**
+   - 处理3篇文献的成本估算: 约0.14元人民币（查找文献完全免费）
+   - 阿里云API每月有免费额度:
+     - 通义千问LLM: 每月免费额度视账号类型而定（经常会有一些免费的大模型可供使用）
+     - TTS语音合成: 每月前3万字符免费
+   - 在免费额度内基本不产生费用
+   - [阿里云学生优惠](https://university.aliyun.com/)（包括本科生和研究生），每年免费领300元优惠券
+
+## 四、配置文件
 
 系统通过`pub.txt`文件进行配置，主要参数包括：
 
@@ -59,7 +95,7 @@ python main.py
 - `tts_format`：音频输出格式(mp3/wav)
 - `tts_output_dir`：语音输出目录
 
-## 组件说明
+## 五、组件说明
 
 ### main.py
 
@@ -100,7 +136,7 @@ python journal_enhancement.py
 
 ### llm_understand.py
 
-文献翻译和理解模块，使用AI对标题、关键词和摘要进行翻译。
+文献翻译和理解模块，使用AI对标题、关键词和摘要进行翻译，翻译进行两轮以保证其准确性。
 
 **独立使用**:
 ```bash
@@ -116,7 +152,7 @@ python llm_understand.py
 python ali2tts_ai.py
 ```
 
-## 工作流程
+## 六、工作流程
 
 1. **文献检索**：`pub_search.py`
    - 从PubMed检索符合条件的文献
@@ -137,7 +173,7 @@ python ali2tts_ai.py
    - 生成语音文件
    - 保存到`output_audio`目录
 
-## 高级用法
+## 七、高级用法
 
 ### 自定义期刊信息数据
 
@@ -155,7 +191,7 @@ python ali2tts_ai.py
 
 系统默认使用`sambert-zhichu-v1`模型，可以在配置文件中通过`tts_model`参数更改。
 
-## 常见问题
+## 八、常见问题
 
 1. **找不到期刊信息**
    - 检查期刊名称是否匹配
@@ -170,6 +206,6 @@ python ali2tts_ai.py
    - 可以调整翻译提示词
    - 尝试其他AI模型
 
-## 许可证
+## 九、许可证
 
 本项目采用MIT许可证

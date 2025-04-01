@@ -17,6 +17,9 @@ colorama>=0.4.6  # Windows终端颜色支持
 # 文件处理
 PyPDF2>=3.0.0
 
+# Token计数
+tiktoken>=0.5.0  # OpenAI token计数库
+
 # 系统和工具库
 requests>=2.31.0
 beautifulsoup4>=4.12.0
