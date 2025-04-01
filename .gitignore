@@ -1,0 +1,5 @@
+# 忽略的文件
+pub2.txt
+PROFILE
+# 忽略的文件夹
+temp/

@@ -1,0 +1,22 @@
+# PubMed文献一站式处理系统依赖库
+
+# HTTP和API客户端
+openai>=1.0.0
+dashscope>=1.13.0
+
+# 文献检索
+biopython>=1.81
+
+# 进度显示与并发
+tqdm>=4.66.0
+python-dotenv>=1.0.0
+
+# 终端和界面处理
+colorama>=0.4.6  # Windows终端颜色支持
+
+# 文件处理
+PyPDF2>=3.0.0
+
+# 系统和工具库
+requests>=2.31.0
+beautifulsoup4>=4.12.0
