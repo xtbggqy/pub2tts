@@ -4,25 +4,64 @@ import os
 import datetime
 import glob
 import sys
+import json
+import re
 
-def safe_print(msg, verbose=True):
-    """安全打印，处理编码问题"""
-    if not verbose:
-        # 检查是否为重要消息
-        if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "TTS费用", "字符统计"]):
-            return
-            
-    try:
-        print(msg)
-        sys.stdout.flush()
-    except:
-        print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-        sys.stdout.flush()
+# 导入日志工具，如果可用
+try:
+    from log_utils import get_logger, init_logger
+    
+    def safe_print(msg, verbose=True):
+        """兼容旧代码，使用日志系统"""
+        logger = get_logger()
+        if not verbose:
+            # 检查是否为重要消息
+            if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "TTS费用", "字符统计"]):
+                return
+        logger.log(msg, verbose)
+except ImportError:
+    def safe_print(msg, verbose=True):
+        """安全打印，处理编码问题"""
+        if not verbose:
+            # 检查是否为重要消息
+            if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "TTS费用", "字符统计"]):
+                return
+                
+        try:
+            print(msg)
+            sys.stdout.flush()
+        except:
+            print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
+            sys.stdout.flush()
 
 class TtsConverter:
-    def __init__(self, config_file="pub.txt", verbose=False):
-        """初始化语音合成工具"""
+    def __init__(self, config_file="pub.txt", verbose=False, log_file=None):
+        """初始化语音合成工具
+        
+        Args:
+            config_file: 配置文件路径
+            verbose: 是否输出详细日志
+            log_file: 日志文件路径，如果为None则不记录到文件
+        """
         self.verbose = verbose  # 先设置verbose属性，因为_read_config会使用它打印日志
+        
+        # 如果提供了log_file，初始化日志系统（如果导入了log_utils）
+        if log_file and 'init_logger' in globals():
+            init_logger(log_file=log_file, verbose=verbose)
+        
+        self.config = {
+            'api_key': '',  # 通义千问 API 密钥
+            'tts_model': 'sambert-zhichu-v1',  # 默认 TTS 模型
+            'tts_input': 'pre4tts.txt',  # 默认输入文件
+            'tts_output_dir': 'output_audio',  # 默认输出目录
+            'tts_format': 'mp3',  # 默认音频格式
+            'tts_sample_rate': 48000,  # 默认采样率
+            'process_directory': False,  # 是否处理整个目录
+            'tts_directory': '',  # 要处理的目录
+            'tts_price': 1.0,  # 默认TTS价格：3元/万字符（超出免费额度后）
+            'tts_content': 'all_zh',  # 默认使用所有中文内容
+        }
+        
         self.config = self._read_config(config_file)
         self._init_api_client()
         self._ensure_output_dir()
@@ -35,17 +74,7 @@ class TtsConverter:
     
     def _read_config(self, config_file):
         """从配置文件读取设置"""
-        config = {
-            'api_key': '',  # 通义千问 API 密钥
-            'tts_model': 'sambert-zhichu-v1',  # 默认 TTS 模型
-            'tts_input': 'pre4tts.txt',  # 默认输入文件
-            'tts_output_dir': 'output_audio',  # 默认输出目录
-            'tts_format': 'mp3',  # 默认音频格式
-            'tts_sample_rate': 48000,  # 默认采样率
-            'process_directory': False,  # 是否处理整个目录
-            'tts_directory': '',  # 要处理的目录
-            'tts_price': 1.0,  # 默认TTS价格：3元/万字符（超出免费额度后）
-        }
+        config = self.config.copy()  # 使用预设的默认值
         
         try:
             if os.path.exists(config_file):
@@ -84,6 +113,8 @@ class TtsConverter:
                                         config['tts_price'] = float(value)
                                     except ValueError:
                                         safe_print(f"警告: 无效的TTS价格: {value}，使用默认值: 3.0元/万字符", self.verbose)
+                                elif key == 'tts_content':
+                                    config['tts_content'] = value
                 
                 # 检查是否缺少配置项，如果是，则添加到配置文件
                 self._check_and_update_config(config_file, config)
@@ -108,6 +139,19 @@ class TtsConverter:
             'process_directory': '# 是否处理整个目录(yes/no)\nprocess_directory=no\n\n',
             'tts_directory': '# 要处理的目录路径\ntts_directory=\n\n',
             'tts_price': '# TTS API价格设置（元/万字符，超过免费额度后）\ntts_price=3.0  # 语音合成价格，每月前三万字符免费，超出后按此价格计费\n\n',
+            'tts_content': '# TTS内容选择（用逗号分隔，可多选）:\n'
+                          '# - title_zh: 翻译后的标题（中文）\n'
+                          '# - title_en: 原始标题（英文）\n'
+                          '# - keywords_zh: 翻译后的关键词（中文）\n'
+                          '# - keywords_en: 原始关键词（英文）\n'
+                          '# - abstract_zh: 翻译后的摘要（中文）\n'
+                          '# - abstract_en: 原始摘要（英文）\n'
+                          '# - authors: 作者名单\n'
+                          '# - journal: 期刊名称\n'
+                          '# - all_zh: 所有中文内容（title_zh + keywords_zh + abstract_zh）\n'
+                          '# - all_en: 所有英文内容（title_en + keywords_en + abstract_en）\n'
+                          '# - mixed: 中英混合（中文标题、关键词、摘要，若某部分翻译失败则使用英文）\n'
+                          'tts_content=all_zh\n\n',
         }
         
         try:
@@ -226,14 +270,150 @@ class TtsConverter:
             return None
     
     def read_text_file(self, file_path):
-        """从文件中读取文本"""
+        """从文件中读取文本并进行预处理"""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read().strip()
+                text = f.read().strip()
+            
+            # 检查文本是否包含JSON数据块
+            articles_data = []
+            data_blocks = re.findall(r'@@DATA_BEGIN@@\n(.*?)\n@@DATA_END@@', text, re.DOTALL)
+            
+            if data_blocks:
+                # 提取所有文章的JSON数据
+                for data_block in data_blocks:
+                    try:
+                        article_data = json.loads(data_block)
+                        articles_data.append(article_data)
+                    except json.JSONDecodeError:
+                        safe_print(f"警告: JSON数据解析失败", self.verbose)
+                
+                # 使用选择的内容格式化为新的文本
+                content_setting = self.config.get('tts_content', 'all_zh')
+                content_options = [opt.strip() for opt in content_setting.split(',')]
+                
+                # 生成格式化的文本
+                processed_text = self._format_by_content_option(articles_data, content_options)
+                
+                # 输出处理前后的字符数变化
+                original_chars = len(text)
+                processed_chars = len(processed_text)
+                safe_print(f"内容选择: {content_setting}", self.verbose)
+                safe_print(f"文本预处理: 原始字符数 {original_chars}，处理后 {processed_chars}", self.verbose)
+                
+                return processed_text
+            else:
+                # 没有找到JSON数据块，使用旧的预处理方式
+                safe_print("未找到结构化数据，使用传统方式处理文本", self.verbose)
+                
+                # 原有的预处理逻辑
+                lines = text.split('\n')
+                non_empty_lines = []
+                prev_empty = False
+                for line in lines:
+                    if line.strip():  # 非空行
+                        non_empty_lines.append(line)
+                        prev_empty = False
+                    else:  # 空行
+                        # 只保留一个连续的空行
+                        if not prev_empty:
+                            non_empty_lines.append(line)
+                            prev_empty = True
+                
+                processed_text = '\n'.join(non_empty_lines)
+                
+                # 输出处理前后的字符数变化
+                original_chars = len(text)
+                processed_chars = len(processed_text)
+                if original_chars != processed_chars:
+                    safe_print(f"文本预处理: 删除了多余空行，字符数从 {original_chars} 减少到 {processed_chars}", self.verbose)
+                
+                return processed_text
         except Exception as e:
-            safe_print(f"读取文件失败: {e}", self.verbose)
+            safe_print(f"读取和处理文件失败: {e}", self.verbose)
             return None
     
+    def _format_by_content_option(self, articles_data, content_options):
+        """根据内容选项格式化文本"""
+        formatted_text = ""
+        
+        for idx, article in enumerate(articles_data):
+            article_text = ""
+            
+            # 如果有多篇文章，添加序号
+            if len(articles_data) > 1:
+                article_text += f"文章 {idx+1}\n\n"
+            
+            # 处理标准选项
+            if 'all_zh' in content_options:
+                article_text += f"标题：{article.get('title_zh', '')}\n\n"
+                article_text += f"关键词：{article.get('keywords_zh', '')}\n\n"
+                article_text += f"摘要：{article.get('abstract_zh', '')}\n\n"
+            elif 'all_en' in content_options:
+                article_text += f"标题：{article.get('title_en', '')}\n\n"
+                article_text += f"关键词：{article.get('keywords_en', '')}\n\n"
+                article_text += f"摘要：{article.get('abstract_en', '')}\n\n"
+            elif 'mixed' in content_options:
+                # 使用中文，如果中文不存在则使用英文
+                title = article.get('title_zh') or article.get('title_en', '')
+                keywords = article.get('keywords_zh') or article.get('keywords_en', '')
+                abstract = article.get('abstract_zh') or article.get('abstract_en', '')
+                
+                article_text += f"标题：{title}\n\n"
+                article_text += f"关键词：{keywords}\n\n"
+                article_text += f"摘要：{abstract}\n\n"
+            else:
+                # 自定义组合处理
+                custom_content_added = False
+                
+                # 只添加用户选择的内容，没有任何标签或前缀
+                # 标题（中文或英文）
+                if 'title_zh' in content_options:
+                    article_text += f"{article.get('title_zh', '')}\n\n"
+                    custom_content_added = True
+                if 'title_en' in content_options:
+                    article_text += f"{article.get('title_en', '')}\n\n"
+                    custom_content_added = True
+                
+                # 关键词（中文或英文）
+                if 'keywords_zh' in content_options:
+                    article_text += f"{article.get('keywords_zh', '')}\n\n"
+                    custom_content_added = True
+                if 'keywords_en' in content_options:
+                    article_text += f"{article.get('keywords_en', '')}\n\n"
+                    custom_content_added = True
+                
+                # 摘要（中文或英文）
+                if 'abstract_zh' in content_options:
+                    article_text += f"{article.get('abstract_zh', '')}\n\n"
+                    custom_content_added = True
+                if 'abstract_en' in content_options:
+                    article_text += f"{article.get('abstract_en', '')}\n\n"
+                    custom_content_added = True
+                
+                # 作者
+                if 'authors' in content_options:
+                    article_text += f"{article.get('authors', '')}\n\n"
+                    custom_content_added = True
+                
+                # 期刊信息
+                if 'journal' in content_options:
+                    journal_info = f"{article.get('journal', '')}"
+                    if article.get('impact_factor') and ('impact_factor' in content_options or 'journal_full' in content_options):
+                        journal_info += f" (影响因子: {article.get('impact_factor')})"
+                    if article.get('quartile') and ('quartile' in content_options or 'journal_full' in content_options):
+                        journal_info += f" ({article.get('quartile')})"
+                    article_text += f"{journal_info}\n\n"
+                    custom_content_added = True
+                
+                # 如果没有任何内容被添加（用户选择了不存在的字段），使用默认的中文标题
+                if not custom_content_added:
+                    article_text += f"{article.get('title_zh', '')}\n\n"
+            
+            formatted_text += article_text + "\n"
+        
+        return formatted_text
+
     def process_directory(self):
         """处理目录中的所有文本文件"""
         directory = self.config.get('tts_directory', '')
@@ -270,17 +450,31 @@ class TtsConverter:
         """处理单个文本文件"""
         input_file = self.config.get('tts_input', '')
         if not input_file:
-            safe_print("未指定输入文件", self.verbose)
+            safe_print("错误: 未指定输入文件路径，请在配置文件中设置tts_input参数", True)
             return False
         
+        # 检查文件是否存在
         if not os.path.exists(input_file):
-            safe_print(f"输入文件不存在: {input_file}", self.verbose)
+            safe_print(f"错误: 输入文件不存在: {input_file}", True)
+            safe_print(f"请确认文件路径正确，且前面的步骤(文献翻译)已正确完成", True)
             return False
         
+        # 检查文件大小
+        if os.path.getsize(input_file) == 0:
+            safe_print(f"错误: 输入文件为空: {input_file}", True)
+            safe_print(f"请确认前面的步骤(文献翻译)已正确生成内容", True)
+            return False
+        
+        # 读取和预处理文件
         text = self.read_text_file(input_file)
         if not text:
-            safe_print("文件内容为空或读取失败", self.verbose)
+            safe_print(f"错误: 文件内容为空或读取失败: {input_file}", True)
             return False
+        
+        # 输出文件内容预览
+        preview = text[:100] + ('...' if len(text) > 100 else '')
+        safe_print(f"读取文件成功，内容预览: {preview}", self.verbose)
+        safe_print(f"文件长度: {len(text)} 字符", self.verbose)
         
         # 使用原文件名作为输出文件名
         base_name = os.path.splitext(os.path.basename(input_file))[0]

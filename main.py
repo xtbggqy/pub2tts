@@ -9,6 +9,9 @@ import argparse
 from datetime import datetime
 import threading
 
+# 导入日志工具
+from log_utils import init_logger, log, info, warning, error, success, debug
+
 # 导入各模块
 try:
     from pub_search import PubMedFetcher
@@ -16,7 +19,7 @@ try:
     from llm_understand import LiteratureTranslator
     from ali2tts_ai import TtsConverter
 except ImportError as e:
-    print(f"导入模块失败: {e}")
+    error(f"导入模块失败: {e}")
     print("请确保所有必要的程序文件在同一目录下")
     sys.exit(1)
 
@@ -24,40 +27,14 @@ except ImportError as e:
 VERBOSE_OUTPUT = False
 
 def safe_print(msg, always_print=False):
-    """安全打印，处理编码问题
+    """安全打印，处理编码问题 - 兼容旧版本调用
     
     Args:
         msg: 要打印的消息
         always_print: 是否始终打印此消息，无视全局verbose设置
     """
-    # 如果不是详细模式，且不是必须打印的消息，则跳过
-    if not VERBOSE_OUTPUT and not always_print:
-        # 以下类型的消息总是打印
-        if not any([
-            msg.startswith("==="),                # 步骤标题
-            "步骤" in msg and "完成" in msg,       # 步骤完成消息
-            "失败" in msg,                         # 失败消息
-            "错误" in msg,                         # 错误消息
-            "警告" in msg,                         # 警告消息
-            "成功" in msg and "保存" in msg,       # 成功保存消息
-            "Token 使用统计" in msg,               # Token统计
-            "未找到" in msg and "终止" in msg       # 终止消息
-        ]):
-            return
-
-    try:
-        # 暂时清除进度条
-        ProgressDisplay.clear_progress()
-        
-        print(msg)
-        sys.stdout.flush()
-        
-        # 重新显示进度条
-        ProgressDisplay.show_progress()
-    except:
-        print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-        sys.stdout.flush()
-        ProgressDisplay.show_progress()
+    # 使用日志工具记录
+    log(msg, always_print)
 
 class ProgressDisplay:
     """进度显示管理器，固定在终端底部"""
@@ -178,15 +155,24 @@ class ProgressDisplay:
         cls.clear_progress()
 
 class PubMedProcessor:
-    def __init__(self, config_file="pub.txt"):
+    def __init__(self, config_file="pub.txt", log_file="out/pub.log"):
         """初始化文献处理器"""
         self.config_file = config_file
         self.start_time = datetime.now()
+        
+        # 初始化日志记录器
+        self.log_file = log_file
+        init_logger(log_file=log_file, verbose=VERBOSE_OUTPUT)
+        
         ProgressDisplay.start()
-        safe_print(f"=== 文献处理流程开始 [{self.start_time.strftime('%Y-%m-%d %H:%M:%S')}] ===", True)
+        log(f"=== 文献处理流程开始 [{self.start_time.strftime('%Y-%m-%d %H:%M:%S')}] ===", True)
     
-    def run_full_process(self):
-        """运行完整的文献处理流程"""
+    def run_full_process(self, skip_tts=False):
+        """运行完整的文献处理流程
+        
+        Args:
+            skip_tts: 是否跳过TTS步骤
+        """
         try:
             # 步骤 1: 文献检索
             ProgressDisplay.update_step(1)
@@ -209,12 +195,16 @@ class PubMedProcessor:
                 return False
             ProgressDisplay.step_status[2] = "完成"
             
-            # 步骤 4: 文本转语音
-            ProgressDisplay.update_step(4)
-            if not self._run_tts_conversion():
-                ProgressDisplay.step_status[3] = "失败"
-                return False
-            ProgressDisplay.step_status[3] = "完成"
+            # 步骤 4: 文本转语音 (可选择跳过)
+            if not skip_tts:
+                ProgressDisplay.update_step(4)
+                if not self._run_tts_conversion():
+                    ProgressDisplay.step_status[3] = "失败"
+                    # 继续执行，只将状态标记为失败
+                ProgressDisplay.step_status[3] = "完成" if ProgressDisplay.step_status[3] != "失败" else "失败"
+            else:
+                ProgressDisplay.step_status[3] = "跳过"
+                log("\n=== 步骤 4: 文本转语音 [已跳过] ===", True)
             
             # 完成所有流程
             self._print_summary()
@@ -224,10 +214,10 @@ class PubMedProcessor:
     
     def _run_pub_search(self):
         """运行文献检索"""
-        safe_print("\n=== 步骤 1: 文献检索 ===", True)
+        log("\n=== 步骤 1: 文献检索 ===", True)
         try:
             # 初始化PubMed检索工具
-            fetcher = PubMedFetcher("default@example.com", self.config_file, verbose=VERBOSE_OUTPUT)
+            fetcher = PubMedFetcher(email=None, config_file=self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
             
             # 获取文献
             publications = fetcher.fetch_publications()
@@ -235,14 +225,14 @@ class PubMedProcessor:
             if publications:
                 # 导出到CSV
                 fetcher.export_to_csv(publications)
-                safe_print("文献检索完成", True)
+                success("文献检索完成")
                 return True
             else:
-                safe_print("未找到符合条件的文献，流程终止", True)
+                warning("未找到符合条件的文献，流程终止")
                 return False
                 
         except Exception as e:
-            safe_print(f"文献检索失败: {e}", True)
+            error(f"文献检索失败: {e}")
             if VERBOSE_OUTPUT:
                 import traceback
                 traceback.print_exc()
@@ -250,10 +240,10 @@ class PubMedProcessor:
     
     def _run_journal_enhancement(self):
         """运行期刊信息增强"""
-        safe_print("\n=== 步骤 2: 期刊信息增强 ===", True)
+        log("\n=== 步骤 2: 期刊信息增强 ===", True)
         try:
             # 初始化期刊增强工具
-            enhancer = JournalEnhancer(self.config_file, verbose=VERBOSE_OUTPUT)
+            enhancer = JournalEnhancer(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
             
             # 增强文章信息
             enhanced_articles = enhancer.enhance_articles()
@@ -261,14 +251,14 @@ class PubMedProcessor:
             if enhanced_articles:
                 # 导出增强后的文章
                 enhancer.export_to_csv(enhanced_articles)
-                safe_print("期刊信息增强完成", True)
+                success("期刊信息增强完成")
                 return True
             else:
-                safe_print("没有可增强的文章，继续执行下一步骤", True)
+                warning("没有可增强的文章，继续执行下一步骤")
                 return True  # 允许流程继续
             
         except Exception as e:
-            safe_print(f"期刊信息增强失败: {e}", True)
+            error(f"期刊信息增强失败: {e}")
             if VERBOSE_OUTPUT:
                 import traceback
                 traceback.print_exc()
@@ -276,21 +266,21 @@ class PubMedProcessor:
     
     def _run_llm_understand(self):
         """运行文献翻译与理解"""
-        safe_print("\n=== 步骤 3: 文献翻译与理解 ===", True)
+        log("\n=== 步骤 3: 文献翻译与理解 ===", True)
         try:
             # 初始化文献翻译工具
-            translator = LiteratureTranslator(self.config_file, verbose=VERBOSE_OUTPUT)
+            translator = LiteratureTranslator(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
             
             # 翻译并增强文献
             if translator.translate_and_enhance():
-                safe_print("文献翻译与理解完成", True)
+                success("文献翻译与理解完成")
                 return True
             else:
-                safe_print("文献翻译失败，但允许流程继续", True)
+                warning("文献翻译失败，但允许流程继续")
                 return True  # 允许流程继续
             
         except Exception as e:
-            safe_print(f"文献翻译失败: {e}", True)
+            error(f"文献翻译失败: {e}")
             if VERBOSE_OUTPUT:
                 import traceback
                 traceback.print_exc()
@@ -298,21 +288,21 @@ class PubMedProcessor:
     
     def _run_tts_conversion(self):
         """运行文本转语音"""
-        safe_print("\n=== 步骤 4: 文本转语音 ===", True)
+        log("\n=== 步骤 4: 文本转语音 ===", True)
         try:
             # 初始化TTS转换器
-            converter = TtsConverter(self.config_file, verbose=VERBOSE_OUTPUT)
+            converter = TtsConverter(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
             
             # 运行转换
             if converter.run():
-                safe_print("文本转语音完成", True)
+                success("文本转语音完成")
                 return True
             else:
-                safe_print("语音合成失败，流程完成", True)
+                error("语音合成失败，流程完成")
                 return True  # 流程完成
             
         except Exception as e:
-            safe_print(f"文本转语音失败: {e}", True)
+            error(f"文本转语音失败: {e}")
             if VERBOSE_OUTPUT:
                 import traceback
                 traceback.print_exc()
@@ -324,12 +314,12 @@ class PubMedProcessor:
         duration = end_time - self.start_time
         minutes, seconds = divmod(duration.total_seconds(), 60)
         
-        safe_print("\n" + "="*50, True)
-        safe_print(f"文献处理流程完成", True)
-        safe_print(f"开始时间: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}", True)
-        safe_print(f"结束时间: {end_time.strftime('%Y-%m-%d %H:%M:%S')}", True)
-        safe_print(f"总耗时: {int(minutes)}分钟 {int(seconds)}秒", True)
-        safe_print("="*50, True)
+        log("\n" + "="*50, True)
+        log(f"文献处理流程完成", True)
+        log(f"开始时间: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}", True)
+        log(f"结束时间: {end_time.strftime('%Y-%m-%d %H:%M:%S')}", True)
+        log(f"总耗时: {int(minutes)}分钟 {int(seconds)}秒", True)
+        log("="*50, True)
     
     def run_single_step(self, step):
         """运行单个步骤"""
@@ -344,8 +334,8 @@ class PubMedProcessor:
             }
             
             if step not in steps:
-                safe_print(f"未知的步骤: {step}", True)
-                safe_print(f"可用步骤: {', '.join(steps.keys())}", True)
+                log(f"未知的步骤: {step}", True)
+                log(f"可用步骤: {', '.join(steps.keys())}", True)
                 return False
             
             # 更新当前步骤
@@ -374,15 +364,23 @@ def main():
             kernel32 = ctypes.windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
         except:
-            safe_print("警告: 无法启用Windows终端的ANSI支持，进度条显示可能异常", True)
+            print("警告: 无法启用Windows终端的ANSI支持，进度条显示可能异常")
     
     parser = argparse.ArgumentParser(description='PubMed文献处理全流程工具')
-    parser.add_argument('-s', '--step', choices=['search', 'enhance', 'translate', 'tts'], 
-                        help='仅执行特定步骤')
+    # 添加命令行参数
+    parser.add_argument('-s', '--steps', nargs='+', 
+                        choices=['search', 'enhance', 'translate', 'tts'], 
+                        help='选择要执行的一个或多个步骤，例如: -s search enhance')
     parser.add_argument('-c', '--config', default='pub.txt', 
                         help='配置文件路径(默认: pub.txt)')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='输出详细日志信息')
+    parser.add_argument('--no-tts', action='store_true',
+                        help='跳过TTS步骤，只运行前三个步骤(检索、增强、翻译)')
+    parser.add_argument('-l', '--log', default='out/pub.log',
+                        help='日志文件路径(默认: out/pub.log)')
+    parser.add_argument('--no-log', action='store_true',
+                        help='禁用日志文件，只输出到终端')
     args = parser.parse_args()
     
     # 设置全局日志输出级别
@@ -392,18 +390,52 @@ def main():
     # 创建out目录(如果不存在)
     os.makedirs("out", exist_ok=True)
     
+    # 设置日志文件
+    log_file = None if args.no_log else args.log
+    
     try:
-        processor = PubMedProcessor(args.config)
+        processor = PubMedProcessor(args.config, log_file)
         
-        if args.step:
-            safe_print(f"仅执行步骤: {args.step}", True)
-            processor.run_single_step(args.step)
+        if args.steps:
+            # 显示将要执行的步骤
+            steps_str = ', '.join(args.steps)
+            log(f"执行选定步骤: {steps_str}", True)
+            
+            # 定义步骤到函数和索引的映射
+            step_funcs = {
+                'search': (processor._run_pub_search, 1),
+                'enhance': (processor._run_journal_enhancement, 2),
+                'translate': (processor._run_llm_understand, 3),
+                'tts': (processor._run_tts_conversion, 4)
+            }
+            
+            # 按顺序执行选定的步骤
+            ordered_steps = sorted(args.steps, key=lambda s: step_funcs[s][1])
+            success = True
+            
+            for step in ordered_steps:
+                func, step_idx = step_funcs[step]
+                ProgressDisplay.update_step(step_idx)
+                
+                log(f"\n=== 正在执行步骤: {step} ===", True)
+                if not func():
+                    ProgressDisplay.step_status[step_idx-1] = "失败"
+                    error(f"步骤 {step} 失败")
+                    success = False
+                    break
+                else:
+                    ProgressDisplay.step_status[step_idx-1] = "完成"
+                    success(f"步骤 {step} 完成")
         else:
-            processor.run_full_process()
+            if args.no_tts:
+                log("执行前三个步骤，跳过语音合成", True)
+                processor.run_full_process(skip_tts=True)
+            else:
+                processor.run_full_process()
             
     except Exception as e:
         ProgressDisplay.stop()  # 确保停止进度显示
-        safe_print(f"程序运行出错: {e}", True)
+        error(f"程序运行出错: {e}")
         if VERBOSE_OUTPUT:
             import traceback
             traceback.print_exc()
@@ -416,5 +448,5 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         ProgressDisplay.stop()
-        safe_print("\n程序被用户中断", True)
+        log("\n程序被用户中断", True)
         sys.exit(1)

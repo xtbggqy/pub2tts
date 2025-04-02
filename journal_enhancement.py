@@ -9,27 +9,46 @@ import re
 from datetime import datetime
 from tqdm import tqdm
 
-def safe_print(msg, verbose=True):
-    """安全打印，处理编码问题"""
-    if not verbose:
-        # 检查是否为重要消息
-        if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告"]):
-            return
-            
-    try:
-        print(msg)
-        import sys
-        sys.stdout.flush()
-    except:
-        print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-        import sys
-        sys.stdout.flush()
+# 导入日志工具，如果可用
+try:
+    from log_utils import get_logger, init_logger
+    
+    def safe_print(msg, verbose=True):
+        """兼容旧代码，使用日志系统"""
+        logger = get_logger()
+        logger.log(msg, verbose)
+except ImportError:
+    def safe_print(msg, verbose=True):
+        """安全打印，处理编码问题"""
+        if not verbose:
+            # 检查是否为重要消息
+            if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告"]):
+                return
+                
+        try:
+            print(msg)
+            import sys
+            sys.stdout.flush()
+        except:
+            print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
+            import sys
+            sys.stdout.flush()
 
 class JournalEnhancer:
-    def __init__(self, config_file="pub.txt", verbose=False):
-        """初始化期刊信息增强处理工具"""
+    def __init__(self, config_file="pub.txt", verbose=False, log_file=None):
+        """初始化期刊信息增强处理工具
+        
+        Args:
+            config_file: 配置文件路径
+            verbose: 是否输出详细日志
+            log_file: 日志文件路径，如果为None则不记录到文件
+        """
         # 确保先设置verbose属性，因为_read_config和_load_journal_data会使用它
         self.verbose = verbose  # 添加详细日志开关
+        
+        # 如果提供了log_file，初始化日志系统（如果导入了log_utils）
+        if log_file and 'init_logger' in globals():
+            init_logger(log_file=log_file, verbose=verbose)
         
         # 然后再读取配置和加载期刊数据
         self.config = self._read_config(config_file)
@@ -66,7 +85,6 @@ class JournalEnhancer:
                                     config['output_sort'] = value
                                 elif key == 'input_sort':   # 变量名修改
                                     config['input_sort'] = value
-                
                 safe_print(f"已从 {config_file} 加载排序和期刊数据配置", self.verbose)
             else:
                 safe_print(f"配置文件 {config_file} 不存在，使用默认设置", self.verbose)
@@ -351,11 +369,27 @@ class JournalEnhancer:
                 elif "if" in rank_data:
                     impact_factor = rank_data["if"]
                 
-                # 提取分区信息
-                if "zone" in rank_data:
+                # 提取分区信息 - 添加常见的分区字段，包括sci和sciBase
+                if "sci" in rank_data:
+                    # 您的JSON数据使用"sci"字段存储分区信息，如"Q1"
+                    quartile = rank_data["sci"]
+                    safe_print(f"从sci字段获取到分区信息: {quartile}", self.verbose)
+                elif "sciBase" in rank_data:
+                    # sciBase可能包含如"生物1区"这样的字符串
+                    quartile = rank_data["sciBase"]
+                    safe_print(f"从sciBase字段获取到分区信息: {quartile}", self.verbose)
+                elif "zone" in rank_data:
                     quartile = rank_data["zone"]
                 elif "q" in rank_data:
                     quartile = rank_data["q"]
+                elif "quartile" in rank_data:
+                    quartile = rank_data["quartile"]
+                
+                # 添加调试输出
+                if quartile != "未知":
+                    safe_print(f"成功为期刊 '{journal_name}' 获取分区信息: {quartile}", self.verbose)
+                else:
+                    safe_print(f"未找到期刊 '{journal_name}' 的分区信息，请检查rank中的字段: {list(rank_data.keys())}", self.verbose)
             
             # 构建返回结果
             return {
@@ -501,7 +535,7 @@ def main():
     """主程序入口"""
     try:
         # 初始化增强处理器
-        enhancer = JournalEnhancer(verbose=True)
+        enhancer = JournalEnhancer(verbose=True, log_file="journal_enhancer.log")
         
         # 增强文章信息
         enhanced_articles = enhancer.enhance_articles()

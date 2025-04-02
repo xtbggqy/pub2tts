@@ -12,27 +12,50 @@ from tqdm import tqdm
 from openai import OpenAI
 from dotenv import load_dotenv
 
-def safe_print(msg, verbose=True):
-    """安全打印，处理编码问题"""
-    if not verbose:
-        # 检查是否为重要消息
-        if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "初始化", "Token 使用统计"]):
-            return
-            
-    try:
-        print(msg)
-        import sys
-        sys.stdout.flush()
-    except:
-        print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-        import sys
-        sys.stdout.flush()
+# 导入日志工具，如果可用
+try:
+    from log_utils import get_logger, init_logger
+    
+    def safe_print(msg, verbose=True):
+        """兼容旧代码，使用日志系统"""
+        logger = get_logger()
+        if not verbose:
+            # 检查是否为重要消息
+            if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "初始化", "Token 使用统计"]):
+                return
+        logger.log(msg, verbose)
+except ImportError:
+    def safe_print(msg, verbose=True):
+        """安全打印，处理编码问题"""
+        if not verbose:
+            # 检查是否为重要消息
+            if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告", "初始化", "Token 使用统计"]):
+                return
+                
+        try:
+            print(msg)
+            import sys
+            sys.stdout.flush()
+        except:
+            print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
+            import sys
+            sys.stdout.flush()
 
 class LiteratureTranslator:
-    def __init__(self, config_file="pub.txt", verbose=False):
-        """初始化文献翻译工具"""
+    def __init__(self, config_file="pub.txt", verbose=False, log_file=None):
+        """初始化文献翻译工具
+        
+        Args:
+            config_file: 配置文件路径
+            verbose: 是否输出详细日志
+            log_file: 日志文件路径，如果为None则不记录到文件
+        """
         # 确保先设置verbose属性，因为_read_config中可能会使用它打印信息
         self.verbose = verbose  # 添加详细日志开关
+        
+        # 如果提供了log_file，初始化日志系统（如果导入了log_utils）
+        if log_file and 'init_logger' in globals():
+            init_logger(log_file=log_file, verbose=verbose)
         
         self.config = self._read_config(config_file)
         self._init_ai_client()
@@ -270,7 +293,7 @@ class LiteratureTranslator:
             # 限制处理的文章数量
             articles_to_process = articles[:min(max_articles, len(articles))]
             
-            # 准备输出的TXT文件内容
+            # 准备输出的TXT文件内容 - 这个应该只包含要输入TTS的内容
             txt_output = []
             
             # 重置token计数
@@ -316,16 +339,16 @@ class LiteratureTranslator:
                     # 将当前文章添加到结果中
                     articles[idx] = enhanced_article
                     
-                    # 添加到TXT输出
-                    txt_content = self._format_for_txt(enhanced_article)
-                    txt_output.append(txt_content)
+                    # 添加到TXT输出 - 仅为TTS准备内容，不需要包含所有翻译结果
+                    article_data = self._prepare_tts_data(enhanced_article)
+                    txt_output.append(article_data)
                     
                     pbar.update(1)
             
-            # 保存到CSV文件
+            # 保存到CSV文件 - 这里保存所有翻译结果
             self._save_to_csv(articles, output_file)
             
-            # 保存到TXT文件
+            # 保存到TXT文件 - 这里只保存用于TTS的内容
             self._save_to_txt(txt_output, output_txt)
             
             # 在完成所有翻译后显示token使用统计
@@ -448,22 +471,40 @@ class LiteratureTranslator:
         
         safe_print("="*50, True)
     
-    def _format_for_txt(self, article):
-        """格式化文章内容，用于TXT输出"""
-        title = article.get('translated_title', '')
-        keywords = article.get('translated_keywords', '')
-        abstract = article.get('translated_abstract', '')
+    def _prepare_tts_data(self, article):
+        """准备用于TTS的数据，只选择必要内容"""
+        # 获取原始英文内容
+        title_en = article.get('title', '')
+        keywords_en = article.get('keywords', '')
+        abstract_en = article.get('abstract', '')
         
-        # 如果翻译字段为空，使用原文
-        if not title:
-            title = article.get('title', '')
-        if not keywords:
-            keywords = article.get('keywords', '')
-        if not abstract:
-            abstract = article.get('abstract', '')
+        # 获取翻译后的中文内容
+        title_zh = article.get('translated_title', '')
+        keywords_zh = article.get('translated_keywords', '')
+        abstract_zh = article.get('translated_abstract', '')
         
-        # 格式化输出 - 移除分隔符，简化格式
-        formatted_text = f"标题：{title}\n\n关键词：{keywords}\n\n摘要：{abstract}\n\n\n"
+        # 获取其他信息
+        authors = article.get('authors', '')
+        journal = article.get('journal', '')
+        impact_factor = article.get('impact_factor', '')
+        quartile = article.get('quartile', '')
+        
+        # 将所有信息保存到JSON中，便于TTS模块根据用户选择提取内容
+        article_data = {
+            "title_en": title_en,
+            "title_zh": title_zh,
+            "keywords_en": keywords_en,
+            "keywords_zh": keywords_zh,
+            "abstract_en": abstract_en,
+            "abstract_zh": abstract_zh,
+            "authors": authors,
+            "journal": journal,
+            "impact_factor": impact_factor,
+            "quartile": quartile
+        }
+        
+        # 返回JSON格式的数据，而不是格式化的文本
+        formatted_text = f"@@DATA_BEGIN@@\n{json.dumps(article_data, ensure_ascii=False)}\n@@DATA_END@@\n\n"
         return formatted_text
     
     def _save_to_csv(self, articles, output_file):
@@ -511,7 +552,7 @@ def main():
     """主程序入口"""
     try:
         # 初始化文献翻译工具
-        translator = LiteratureTranslator(verbose=True)
+        translator = LiteratureTranslator(verbose=True, log_file="translator.log")
         
         # 翻译并增强文献
         translator.translate_and_enhance()

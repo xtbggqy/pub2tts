@@ -3,63 +3,70 @@ PubMed文献检索工具
 从PubMed上按照指定关键词获取文献信息，配置从pub.txt读取
 """
 import os
-import time
 import csv
-import datetime
-import re
-from Bio import Entrez
 import sys
+import time
+from Bio import Entrez
 from tqdm import tqdm
-from datetime import datetime, timedelta
 
-def safe_print(msg, verbose=True):
-    """安全打印，处理编码问题"""
-    if not verbose:
-        # 检查是否为重要消息
-        if not any(key in msg for key in ["成功", "完成", "错误", "失败", "警告:", "找到"]):
-            return
-            
-    try:
-        print(msg)
-        sys.stdout.flush()
-    except:
-        print(str(msg).encode('utf-8', 'ignore').decode('utf-8', 'ignore'))
-        sys.stdout.flush()
+# 导入自定义模块
+from pubmed_core import (
+    safe_print, retry_function, validate_search_query, 
+    build_date_filter, get_entrez_sort_param, remove_html_tags, extract_publication_date
+)
+from search_enhancer import SearchEnhancer
 
-def retry_function(func, max_retries=3, delay=1):
-    """重试机制，处理网络不稳定问题"""
-    for attempt in range(max_retries):
-        try:
-            return func()
-        except Exception as e:
-            if attempt < max_retries - 1:
-                sleep_time = delay * (attempt + 1)
-                safe_print(f"尝试失败 ({attempt+1}/{max_retries}): {e}. 将在 {sleep_time}秒后重试...")
-                time.sleep(sleep_time)
-            else:
-                safe_print(f"所有重试均失败: {e}")
-                raise
+# 导入日志工具，如果可用
+try:
+    from log_utils import get_logger, init_logger
+except ImportError:
+    pass
 
 class PubMedFetcher:
-    def __init__(self, email, config_file="pub.txt", verbose=False):
-        """初始化PubMed检索工具"""
-        self.email = email
-        self.verbose = verbose  # 添加详细日志开关
-        Entrez.email = email
-        safe_print(f"PubMed检索初始化完成，使用邮箱: {email}", self.verbose)
+    def __init__(self, email=None, config_file="pub.txt", verbose=False, log_file=None):
+        """初始化PubMed检索工具
+        
+        Args:
+            email: PubMed API Email
+            config_file: 配置文件路径
+            verbose: 是否输出详细日志
+            log_file: 日志文件路径，如果为None则不记录到文件
+        """
+        self.verbose = verbose
         self.config = self.read_config(config_file)
+        
+        # 如果提供了log_file，初始化日志系统（如果导入了log_utils）
+        if log_file and 'init_logger' in globals():
+            init_logger(log_file=log_file, verbose=verbose)
+        
+        # 设置email和初始化搜索增强器
+        self.email = email or self.config.get('email', 'default@example.com')
+        Entrez.email = self.email
+        
+        self.search_enhancer = None
+        if self.config.get('enhance_query', False):
+            self.search_enhancer = SearchEnhancer(self.config, verbose=self.verbose)
+        
+        safe_print(f"PubMed检索初始化完成，使用邮箱: {self.email}", self.verbose)
     
     def read_config(self, config_file):
         """从配置文件读取设置"""
+        # 定义默认配置
         config = {
             'query': 'cancer',
-            'time_period': 3.0,  # 默认改为3年
-            'start_date': '',    # 新增起始日期
-            'end_date': '',      # 新增结束日期
+            'multi_query': '',         # 多关键词搜索
+            'time_period': 3.0,        # 默认3年
+            'start_date': '',          # 起始日期
+            'end_date': '',            # 结束日期
             'max_results': 50,
             'output_file': 'pubmed_results.csv',
             'get_citations': True,
-            'pubmed_sort': 'best_match'  # 添加排序方式，默认为最佳匹配
+            'pubmed_sort': 'best_match',
+            'enhance_query': False,    # 是否润色搜索词
+            'ai_model': 'qwen-turbo',  # 用于润色的AI模型
+            'api_key': '',             # API密钥
+            'api_base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+            'ai_timeout': 30,
         }
         
         try:
@@ -70,46 +77,73 @@ class PubMedFetcher:
                         if line and not line.startswith('#'):
                             parts = line.split('=', 1)
                             if len(parts) == 2:
-                                key, value = parts
-                                key = key.strip()
-                                value = value.strip()
+                                key, value = parts[0].strip(), parts[1].strip()
                                 
-                                if key == 'query':
-                                    config['query'] = value
-                                elif key == 'time_period':
+                                # 处理数值型配置
+                                if key == 'time_period':
                                     try:
                                         config['time_period'] = float(value)
                                     except ValueError:
                                         safe_print(f"警告: 无效的时间周期值: {value}，使用默认值: 3.0")
-                                elif key == 'start_date':  # 处理起始日期
-                                    config['start_date'] = value
-                                elif key == 'end_date':    # 处理结束日期
-                                    config['end_date'] = value
                                 elif key == 'max_results':
                                     try:
                                         config['max_results'] = int(value)
                                     except ValueError:
                                         safe_print(f"警告: 无效的最大结果数: {value}，使用默认值: 50")
-                                elif key == 'output_file':
-                                    config['output_file'] = value
-                                elif key == 'email':
-                                    self.email = value
-                                    Entrez.email = value
                                 elif key == 'get_citations':
                                     config['get_citations'] = value.lower() in ['true', 'yes', 'y', '1']
-                                elif key == 'pubmed_sort':  # 新增，读取排序方式
-                                    config['pubmed_sort'] = value.lower()
+                                elif key == 'enhance_query':
+                                    config['enhance_query'] = value.lower() in ['true', 'yes', 'y', '1']
+                                elif key == 'ai_timeout':
+                                    try:
+                                        config['ai_timeout'] = int(value)
+                                    except ValueError:
+                                        safe_print(f"警告: 无效的AI超时设置: {value}，使用默认值: 30秒")
+                                # 处理字符串型配置
+                                elif key in config:
+                                    config[key] = value
                 
+                # 检查是否缺少配置项
+                self._check_and_update_config(config_file, config)
                 safe_print(f"已从 {config_file} 加载配置")
             else:
                 safe_print(f"配置文件 {config_file} 不存在，使用默认设置")
-                # 创建默认配置文件
                 self.create_default_config(config_file, config)
         except Exception as e:
             safe_print(f"读取配置文件出错: {e}")
             safe_print("使用默认设置")
         
         return config
+    
+    def _check_and_update_config(self, config_file, config):
+        """检查并更新配置文件，添加缺失的配置项"""
+        needed_params = {
+            'enhance_query': '# 是否润色搜索词(yes/no)\nenhance_query=no\n\n',
+            'ai_model': '# 用于润色搜索词的AI模型\nai_model=qwen-turbo\n\n',
+            'ai_timeout': '# AI调用超时时间(秒)\nai_timeout=30\n\n',
+            'multi_query': '# 多关键词查询(用逗号分隔)\nmulti_query=\n\n',
+        }
+        
+        try:
+            # 读取当前配置文件内容
+            with open(config_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # 检查并添加缺失的配置项
+            additions = []
+            for param, template in needed_params.items():
+                if f"{param}=" not in content:
+                    additions.append(template)
+            
+            # 如果有需要添加的内容，向文件末尾追加
+            if additions:
+                with open(config_file, 'a', encoding='utf-8') as f:
+                    f.write("\n# 搜索词润色设置\n")
+                    for addition in additions:
+                        f.write(addition)
+                safe_print(f"已向 {config_file} 添加搜索词润色设置", self.verbose)
+        except Exception as e:
+            safe_print(f"更新配置文件出错: {e}", self.verbose)
     
     def create_default_config(self, config_file, config):
         """创建默认配置文件"""
@@ -124,6 +158,15 @@ class PubMedFetcher:
                 f.write("# 布尔运算: (cancer OR tumor) AND (therapy OR treatment) NOT lung\n")
                 f.write("# MeSH术语: \"Neoplasms\"[MeSH] AND \"Drug Therapy\"[MeSH]\n")
                 f.write(f"query={config['query']}\n\n")
+                f.write("# 多关键词查询(用逗号分隔，比如: cancer,diabetes,alzheimer)\n")
+                f.write("# 如果此项不为空，将优先于单一查询(query)执行\n")
+                f.write(f"multi_query={config.get('multi_query', '')}\n\n")
+                f.write("# 是否润色搜索词(yes/no)\n")
+                f.write(f"enhance_query={'yes' if config['enhance_query'] else 'no'}\n\n")
+                f.write("# 用于润色搜索词的AI模型\n")
+                f.write(f"ai_model={config['ai_model']}\n\n")
+                f.write("# AI调用超时时间(秒)\n")
+                f.write(f"ai_timeout={config['ai_timeout']}\n\n")
                 f.write("# 时间设置 (三种方式，优先级: 起止日期 > 时间周期 > 查询中的日期过滤)\n")
                 f.write(f"# 方式1: 时间周期（单位：年），如0.5表示最近6个月，1表示最近一年\ntime_period={config['time_period']}\n\n")
                 f.write("# 方式2: 明确的起止日期 (格式: YYYY/MM/DD 或 YYYY-MM-DD)\n")
@@ -145,102 +188,77 @@ class PubMedFetcher:
         except Exception as e:
             safe_print(f"创建默认配置文件失败: {e}")
     
-    def build_date_filter(self, time_period=None, start_date=None, end_date=None):
-        """构建日期过滤器
-        
-        Args:
-            time_period: 时间周期（年）
-            start_date: 起始日期字符串 (YYYY/MM/DD or YYYY-MM-DD)
-            end_date: 结束日期字符串 (YYYY/MM/DD or YYYY-MM-DD)
-            
-        Returns:
-            日期过滤字符串
-        """
-        try:
-            # 优先使用明确的起止日期
-            if start_date and end_date:
-                # 标准化日期格式 (转换为 YYYY/MM/DD)
-                start_date = self._normalize_date_format(start_date)
-                end_date = self._normalize_date_format(end_date)
-                
-                if start_date and end_date:
-                    date_filter = f"({start_date}[Date - Publication] : {end_date}[Date - Publication])"
-                    safe_print(f"使用指定起止日期过滤: {date_filter}", self.verbose)
-                    return date_filter
-            
-            # 如果没有明确的起止日期，使用时间周期
-            if time_period:
-                current_date = datetime.now()
-                # 将时间周期（年）转换为天数
-                days = int(time_period * 365)
-                past_date = current_date - timedelta(days=days)
-                
-                # 格式化为YYYY/MM/DD格式
-                start_date = past_date.strftime("%Y/%m/%d")
-                end_date = current_date.strftime("%Y/%m/%d")
-                
-                date_filter = f"({start_date}[Date - Publication] : {end_date}[Date - Publication])"
-                safe_print(f"使用时间周期过滤 ({time_period}年): {date_filter}", self.verbose)
-                return date_filter
-                
-            return ""
-            
-        except Exception as e:
-            safe_print(f"构建日期过滤器出错: {e}", self.verbose)
-            return ""
-    
-    def _normalize_date_format(self, date_str):
-        """标准化日期格式为YYYY/MM/DD"""
-        if not date_str:
-            return ""
-            
-        # 处理不同的日期分隔符
-        date_str = date_str.strip().replace('-', '/')
-        
-        # 验证日期格式
-        parts = date_str.split('/')
-        if len(parts) == 3:
-            # 完整的年月日
-            try:
-                year, month, day = parts
-                # 简单验证
-                if 1000 <= int(year) <= 9999 and 1 <= int(month) <= 12 and 1 <= int(day) <= 31:
-                    return f"{year}/{month}/{day}"
-            except ValueError:
-                pass
-        elif len(parts) == 2:
-            # 只有年月
-            try:
-                year, month = parts
-                if 1000 <= int(year) <= 9999 and 1 <= int(month) <= 12:
-                    return f"{year}/{month}/01"
-            except ValueError:
-                pass
-        elif len(parts) == 1:
-            # 只有年份
-            try:
-                year = parts[0]
-                if 1000 <= int(year) <= 9999:
-                    return f"{year}/01/01"
-            except ValueError:
-                pass
-                
-        safe_print(f"警告: 无效的日期格式: '{date_str}'，应为YYYY/MM/DD或YYYY-MM-DD", self.verbose)
-        return ""
-    
     def fetch_publications(self):
         """获取PubMed文献"""
-        query = self.config['query']
+        # 检查是否有多查询
+        multi_query = self.config.get('multi_query', '')
+        if multi_query:
+            queries = [q.strip() for q in multi_query.split(',') if q.strip()]
+            if queries:
+                safe_print(f"检测到{len(queries)}个查询关键词: {', '.join(queries)}", True)
+                
+                all_publications = []
+                max_per_query = max(1, int(self.config['max_results'] / len(queries)))
+                
+                # 为每个查询执行搜索
+                for i, query in enumerate(queries):
+                    safe_print(f"\n[{i+1}/{len(queries)}] 正在查询: '{query}'", True)
+                    
+                    # 临时修改配置
+                    original_query = self.config['query']
+                    original_max = self.config['max_results']
+                    self.config['query'] = query
+                    self.config['max_results'] = max_per_query
+                    
+                    try:
+                        publications = self._fetch_single_query()
+                        if publications:
+                            # 添加查询关键词标记
+                            for pub in publications:
+                                pub['search_query'] = query
+                            
+                            all_publications.extend(publications)
+                            safe_print(f"查询 '{query}' 获取到 {len(publications)} 篇文献", True)
+                        else:
+                            safe_print(f"查询 '{query}' 未找到符合条件的文献", True)
+                    except Exception as e:
+                        safe_print(f"处理查询 '{query}' 时出错: {e}", True)
+                        if self.verbose:
+                            import traceback
+                            traceback.print_exc()
+                    finally:
+                        # 恢复原始配置
+                        self.config['query'] = original_query
+                        self.config['max_results'] = original_max
+                
+                # 返回结果
+                if all_publications:
+                    safe_print(f"多关键词查询完成，共获取 {len(all_publications)} 篇文献", True)
+                    return all_publications
+                else:
+                    safe_print("所有查询均未找到符合条件的文献", True)
+                    return []
+        
+        # 如果没有多查询或多查询为空，执行单一查询
+        return self._fetch_single_query()
+    
+    def _fetch_single_query(self):
+        """获取单个查询的PubMed文献"""
+        original_query = self.config['query']
         time_period = self.config['time_period']
         start_date = self.config.get('start_date', '')
         end_date = self.config.get('end_date', '')
         max_results = self.config['max_results']
         sort_type = self.config.get('pubmed_sort', 'best_match')
         
-        # 添加日期过滤器，检查查询是否已包含日期过滤
+        # 如果启用了搜索词润色，先润色搜索词
+        query = original_query
+        if self.config.get('enhance_query', False) and self.search_enhancer:
+            query = self.search_enhancer.enhance_query(original_query)
+        
+        # 添加日期过滤器
         if not any(tag in query.lower() for tag in ['[pdat]', '[date', 'date -']):
-            # 如果查询中没有日期过滤器，添加我们的日期过滤
-            date_filter = self.build_date_filter(time_period, start_date, end_date)
+            date_filter = build_date_filter(time_period, start_date, end_date, self.verbose)
             if date_filter:
                 # 检查查询是否已经用括号包围
                 if not (query.startswith('(') and query.endswith(')')):
@@ -257,11 +275,9 @@ class PubMedFetcher:
         safe_print(f"执行PubMed高级搜索: {full_query}", self.verbose)
         safe_print(f"排序方式: {sort_type}", self.verbose)
         
-        # 检查查询语法
-        self._validate_search_query(full_query)
-        
-        # 转换排序方式为Entrez参数
-        sort_param = self._get_entrez_sort_param(sort_type)
+        # 检查查询语法和设置排序
+        validate_search_query(full_query, self.verbose)
+        sort_param = get_entrez_sort_param(sort_type, self.verbose)
         
         # 第一步: 使用ESearch获取文献ID列表
         try:
@@ -278,101 +294,59 @@ class PubMedFetcher:
             
             total_count = int(search_results.get("Count", 0))
             safe_print(f"找到 {total_count} 篇文献，将获取前 {len(id_list)} 篇详情", self.verbose)
-            
         except Exception as e:
             safe_print(f"搜索过程出错: {e}", self.verbose)
             return []
         
         # 第二步: 获取文献详细信息
         publications = []
-        skipped_no_abstract = 0  # 统计因没有摘要而被跳过的文章数
-        processed_ids = set()  # 跟踪已处理的ID
+        skipped_no_abstract = 0
+        processed_ids = set()
         
-        # 获取足够数量的有效文章，需要达到max_results指定的数量
+        # 分批处理ID，提取文献信息
         while len(publications) < max_results:
-            # 检查是否还有未处理的ID
+            # 获取未处理的ID
             remaining_ids = [id for id in id_list if id not in processed_ids]
-            
-            # 如果没有更多ID可处理，则尝试获取更多ID
             if not remaining_ids:
-                safe_print(f"已处理所有初始检索结果，但只获取到 {len(publications)}/{max_results} 篇有效文章", self.verbose)
-                
-                # 计算需要额外检索的ID数量，考虑到一些文章可能没有摘要
-                # 根据已有经验，估算缺失摘要的比例，多获取一些ID
-                additional_needed = (max_results - len(publications)) * 2
-                
-                # 尝试检索更多ID
-                try:
-                    def _esearch_more():
-                        # 设置retstart参数，从之前获取的最后一个ID之后开始
-                        handle = Entrez.esearch(db="pubmed", term=full_query, retmax=additional_needed, 
-                                               retstart=len(id_list), sort=sort_param)
-                        return Entrez.read(handle)
-                    
-                    more_results = retry_function(_esearch_more)
-                    more_ids = more_results.get("IdList", [])
-                    
-                    if more_ids:
-                        safe_print(f"获取到额外 {len(more_ids)} 个文献ID", self.verbose)
-                        id_list.extend(more_ids)
-                    else:
-                        safe_print(f"无法获取更多文献ID，只能返回当前 {len(publications)} 篇文章", True)
-                        break
-                        
-                except Exception as e:
-                    safe_print(f"获取额外ID时出错: {e}", self.verbose)
-                    break
-                
-                # 更新剩余ID列表
-                remaining_ids = [id for id in id_list if id not in processed_ids]
-                if not remaining_ids:
-                    break  # 仍然没有新ID，退出循环
-            
-            # 确定本批次要处理的ID数量
-            batch_size = min(10, len(remaining_ids))  # 每批最多10篇
-            current_batch_ids = remaining_ids[:batch_size]
-            batch_ids_str = ",".join(current_batch_ids)
-            
-            # 更新已处理ID集合
-            processed_ids.update(current_batch_ids)
-            
-            try:
-                def _efetch():
-                    handle = Entrez.efetch(db="pubmed", id=batch_ids_str, retmode="xml")
-                    return Entrez.read(handle)
-                
-                records = retry_function(_efetch)
-                
-                for article in records['PubmedArticle']:
+                # 尝试获取更多ID
+                if len(publications) < max_results:
                     try:
-                        pub_info = self._extract_article_info(article)
-                        # 检查文章是否有摘要，如果没有则跳过
-                        if pub_info and pub_info.get('abstract'):
-                            publications.append(pub_info)
+                        additional_needed = (max_results - len(publications)) * 2
+                        more_ids = self._get_more_ids(full_query, len(id_list), additional_needed, sort_param)
+                        if more_ids:
+                            id_list.extend(more_ids)
+                            remaining_ids = [id for id in more_ids if id not in processed_ids]
                         else:
-                            skipped_no_abstract += 1
-                            if self.verbose:
-                                safe_print(f"跳过没有摘要的文章 (PMID: {article.get('MedlineCitation', {}).get('PMID', 'Unknown')})", self.verbose)
+                            break
                     except Exception as e:
-                        safe_print(f"提取文章信息出错: {e}", self.verbose)
-                        continue
-                    
-                    # 如果达到所需数量，提前退出循环
-                    if len(publications) >= max_results:
+                        safe_print(f"获取额外ID时出错: {e}", self.verbose)
                         break
-                
-            except Exception as e:
-                safe_print(f"获取批次详情失败: {e}", self.verbose)
+                else:
+                    break
             
-            # 如果达到所需数量，提前退出循环
-            if len(publications) >= max_results:
+            # 处理一批ID
+            current_batch = remaining_ids[:min(10, len(remaining_ids))]
+            if not current_batch:
                 break
                 
+            processed_ids.update(current_batch)
+            batch_pubs = self._process_article_batch(current_batch)
+            
+            # 过滤无摘要文章并添加到结果
+            for pub in batch_pubs:
+                if pub and pub.get('abstract'):
+                    publications.append(pub)
+                else:
+                    skipped_no_abstract += 1
+                
+                if len(publications) >= max_results:
+                    break
+            
             # 添加延迟，避免请求过于频繁
-            if remaining_ids[batch_size:]:  # 如果还有更多ID待处理
+            if len(publications) < max_results and remaining_ids[len(current_batch):]:
                 time.sleep(0.5)
         
-        # 如果处理完所有ID仍未达到所需数量，通知用户
+        # 报告结果
         if len(publications) < max_results:
             safe_print(f"警告: 请求了{max_results}篇文献，但只找到{len(publications)}篇有效文献（含摘要）", True)
             safe_print(f"有{skipped_no_abstract}篇文献因没有摘要被跳过", True)
@@ -389,45 +363,51 @@ class PubMedFetcher:
         safe_print(f"成功获取 {len(publications)} 篇文献信息 (有摘要文章)", True)
         return publications
     
-    def _get_entrez_sort_param(self, sort_type):
-        """将排序类型转换为Entrez API参数"""
-        sort_map = {
-            'best_match': 'relevance',    # 最佳匹配
-            'most_recent': 'date_added',  # 最近添加
-            'pub_date': 'pub_date',       # 出版日期
-            'first_author': 'author',     # 第一作者
-            'journal': 'journal'          # 期刊名称
-        }
+    def _get_more_ids(self, query, start, count, sort_param):
+        """获取更多文献ID"""
+        safe_print(f"尝试获取额外 {count} 个文献ID (从位置 {start} 开始)", self.verbose)
+        def _esearch_more():
+            handle = Entrez.esearch(db="pubmed", term=query, retmax=count, 
+                                   retstart=start, sort=sort_param)
+            return Entrez.read(handle)
         
-        sort_param = sort_map.get(sort_type.lower(), 'relevance')
-        safe_print(f"使用PubMed排序参数: {sort_param}", self.verbose)
-        return sort_param
+        more_results = retry_function(_esearch_more)
+        more_ids = more_results.get("IdList", [])
+        
+        if more_ids:
+            safe_print(f"获取到额外 {len(more_ids)} 个文献ID", self.verbose)
+        else:
+            safe_print(f"无法获取更多文献ID", True)
+            
+        return more_ids
     
-    def _validate_search_query(self, query):
-        """检查搜索查询语法，提供警告和建议"""
-        # 检查括号是否匹配
-        if query.count('(') != query.count(')'):
-            safe_print("警告: 搜索词中括号不匹配，可能导致搜索结果不符合预期", self.verbose)
-        
-        # 检查引号是否匹配
-        if query.count('"') % 2 != 0:
-            safe_print("警告: 搜索词中引号不匹配，请确保引号成对使用", self.verbose)
-        
-        # 检查常见字段标记
-        common_fields = ['[Title]', '[Abstract]', '[Author]', '[Journal]', '[MeSH]', 
-                        '[Title/Abstract]', '[pdat]', '[Publication Date]', '[Affiliation]']
-        for field in common_fields:
-            if field.lower() in query.lower() and field not in query:
-                safe_print(f"提示: 检测到字段标记 '{field}' 可能大小写不匹配，PubMed字段标记区分大小写", self.verbose)
-        
-        # 检查布尔运算符大小写
-        for op in ['and', 'or', 'not']:
-            if f" {op} " in query.lower() and f" {op.upper()} " not in query:
-                safe_print(f"警告: 布尔运算符 '{op}' 应使用大写形式 '{op.upper()}'", self.verbose)
-        
-        # 检查常见语法错误
-        if "[mesh]" in query.lower() and not re.search(r'"[^"]+"[^[]*\[mesh\]', query.lower()):
-            safe_print("提示: 使用MeSH术语时，通常需要用引号，如: \"Neoplasms\"[MeSH]", self.verbose)
+    def _process_article_batch(self, id_batch):
+        """处理一批文章ID，获取详细信息"""
+        if not id_batch:
+            return []
+            
+        batch_ids_str = ",".join(id_batch)
+        try:
+            def _efetch():
+                handle = Entrez.efetch(db="pubmed", id=batch_ids_str, retmode="xml")
+                return Entrez.read(handle)
+            
+            records = retry_function(_efetch)
+            
+            result = []
+            for article in records.get('PubmedArticle', []):
+                try:
+                    pub_info = self._extract_article_info(article)
+                    result.append(pub_info)
+                except Exception as e:
+                    safe_print(f"提取文章信息出错: {e}", self.verbose)
+                    result.append(None)
+                    
+            return result
+                
+        except Exception as e:
+            safe_print(f"获取批次详情失败: {e}", self.verbose)
+            return [None] * len(id_batch)
     
     def _extract_article_info(self, article):
         """从PubMed文章中提取信息"""
@@ -445,7 +425,7 @@ class PubMedFetcher:
             title = article_data.get('ArticleTitle', '无标题')
             if isinstance(title, list):
                 title = ' '.join([str(t) for t in title])
-            title = self._remove_html_tags(str(title))
+            title = remove_html_tags(title)
             
             # 提取摘要并删除HTML标签
             abstract = ""
@@ -456,24 +436,24 @@ class PubMedFetcher:
                     abstract_text_list = []
                     for part in abstract_parts:
                         if isinstance(part, str):
-                            abstract_text_list.append(self._remove_html_tags(part))
+                            abstract_text_list.append(remove_html_tags(part))
                         elif hasattr(part, 'attributes') and hasattr(part, '__str__'):
                             label = part.attributes.get('Label', '')
-                            text = self._remove_html_tags(str(part))
+                            text = remove_html_tags(str(part))
                             if label:
                                 abstract_text_list.append(f"{label.upper()}: {text}")
                             else:
                                 abstract_text_list.append(text)
                     abstract = " ".join(abstract_text_list)
                 elif abstract_parts:
-                    abstract = self._remove_html_tags(str(abstract_parts))
+                    abstract = remove_html_tags(str(abstract_parts))
             
             # 检查摘要是否为空
             if not abstract.strip():
                 safe_print(f"文章 PMID:{pmid} 没有摘要", self.verbose)
                 return None  # 返回None表示这篇文章没有摘要
             
-            # 提取作者和单位并删除HTML标签
+            # 提取作者和单位
             authors = []
             affiliations = []
             author_list = article_data.get('AuthorList', [])
@@ -481,15 +461,15 @@ class PubMedFetcher:
                 for author in author_list:
                     if isinstance(author, dict):
                         # 提取作者姓名
-                        last_name = self._remove_html_tags(author.get('LastName', ''))
-                        fore_name = self._remove_html_tags(author.get('ForeName', author.get('Initials', '')))
+                        last_name = remove_html_tags(author.get('LastName', ''))
+                        fore_name = remove_html_tags(author.get('ForeName', author.get('Initials', '')))
                         full_name = ""
                         if last_name and fore_name:
                             full_name = f"{last_name} {fore_name}"
                         elif last_name:
                             full_name = last_name
                         elif author.get('CollectiveName'):
-                            full_name = self._remove_html_tags(author.get('CollectiveName'))
+                            full_name = remove_html_tags(author.get('CollectiveName'))
                         
                         if full_name:
                             authors.append(full_name)
@@ -499,47 +479,18 @@ class PubMedFetcher:
                         if affiliation_info:
                             for affiliation in affiliation_info:
                                 if isinstance(affiliation, dict) and 'Affiliation' in affiliation:
-                                    aff_text = self._remove_html_tags(affiliation['Affiliation'])
+                                    aff_text = remove_html_tags(affiliation['Affiliation'])
                                     if aff_text and aff_text not in affiliations:
                                         affiliations.append(aff_text)
             
-            # 提取关键词并删除HTML标签
+            # 提取关键词
             keywords = []
-            # MeSH关键词
-            mesh_headings = medline.get('MeshHeadingList', [])
-            if mesh_headings:
-                for mesh in mesh_headings:
-                    if isinstance(mesh, dict) and 'DescriptorName' in mesh:
-                        desc = mesh['DescriptorName']
-                        if hasattr(desc, '__str__'):
-                            keywords.append(self._remove_html_tags(str(desc)))
+            self._extract_keywords(medline, keywords)
             
-            # 作者关键词
-            keyword_list = medline.get('KeywordList', [])
-            for keyword_group in keyword_list:
-                if isinstance(keyword_group, list):
-                    for keyword in keyword_group:
-                        if keyword and hasattr(keyword, '__str__'):
-                            keywords.append(self._remove_html_tags(str(keyword)))
-            
-            # 提取发表日期
-            pub_date = self._extract_publication_date(article)
-            
-            # 提取DOI
-            doi = ""
-            if article.get('PubmedData', {}).get('ArticleIdList'):
-                for article_id in article['PubmedData']['ArticleIdList']:
-                    if hasattr(article_id, 'attributes'):
-                        id_type = article_id.attributes.get('IdType')
-                        if id_type == 'doi':
-                            doi = str(article_id)
-                            break
-            
-            # 提取期刊信息
-            journal = article_data.get('Journal', {})
-            journal_name = self._remove_html_tags(
-                journal.get('Title', journal.get('ISOAbbreviation', '未知期刊'))
-            )
+            # 提取其他信息
+            pub_date = extract_publication_date(article, self.verbose)
+            doi = self._extract_doi(article)
+            journal_name = self._extract_journal_name(article_data)
             
             return {
                 'pmid': pmid,
@@ -555,114 +506,44 @@ class PubMedFetcher:
             }
             
         except Exception as e:
-            safe_print(f"提取文章信息时出错: {e}", self.verbose)
+            safe_print(f"提取文章信息出错: {e}", self.verbose)
             return None
     
-    def _remove_html_tags(self, text):
-        """删除文本中的HTML标签"""
-        if not text:
-            return ""
+    def _extract_keywords(self, medline, keywords):
+        """提取关键词"""
+        # MeSH关键词
+        mesh_headings = medline.get('MeshHeadingList', [])
+        if mesh_headings:
+            for mesh in mesh_headings:
+                if isinstance(mesh, dict) and 'DescriptorName' in mesh:
+                    desc = mesh['DescriptorName']
+                    if hasattr(desc, '__str__'):
+                        keywords.append(remove_html_tags(str(desc)))
         
-        # 使用正则表达式删除HTML标签
-        clean_text = re.sub(r'<[^>]+>', '', str(text))
-        # 替换HTML实体
-        clean_text = clean_text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
-        clean_text = clean_text.replace('&quot;', '"').replace('&apos;', "'").replace('&nbsp;', ' ')
-        # 删除额外的空白符
-        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-        
-        return clean_text
+        # 作者关键词
+        keyword_list = medline.get('KeywordList', [])
+        for keyword_group in keyword_list:
+            if isinstance(keyword_group, list):
+                for keyword in keyword_group:
+                    if keyword and hasattr(keyword, '__str__'):
+                        keywords.append(remove_html_tags(str(keyword)))
     
-    def _extract_publication_date(self, article):
-        """提取并格式化发表日期为YYYY-MM-DD格式"""
-        try:
-            # 尝试从不同位置提取日期
-            article_data = article.get('MedlineCitation', {}).get('Article', {})
-            
-            # 尝试从ArticleDate获取，这通常是最完整的日期
-            article_date = None
-            if article_data.get('ArticleDate'):
-                article_date = article_data.get('ArticleDate')
-                if isinstance(article_date, list):
-                    article_date = article_date[0]
-                
-                if article_date:
-                    year = article_date.get('Year', '')
-                    month = article_date.get('Month', '')
-                    day = article_date.get('Day', '')
-                    
-                    if year and month and day:
-                        try:
-                            month = int(month)
-                            day = int(day)
-                            return f"{year}-{month:02d}-{day:02d}"
-                        except (ValueError, TypeError):
-                            pass
-            
-            # 尝试从PubDate获取
-            journal = article_data.get('Journal', {})
-            pub_date = journal.get('JournalIssue', {}).get('PubDate', {})
-            
-            year = pub_date.get('Year', '')
-            month = pub_date.get('Month', '')
-            day = pub_date.get('Day', '')
-            
-            # 处理月份名称
-            month_map = {
-                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-                'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-            }
-            
-            if month in month_map:
-                month = month_map[month]
-            
-            # 构建日期字符串
-            if year and month and day:
-                try:
-                    month_num = int(month)
-                    day_num = int(day)
-                    return f"{year}-{month_num:02d}-{day_num:02d}"
-                except (ValueError, TypeError):
-                    pass
-            elif year and month:
-                try:
-                    month_num = int(month)
-                    return f"{year}-{month_num:02d}-01"
-                except (ValueError, TypeError):
-                    pass
-            elif year:
-                return f"{year}-01-01"
-            
-            # 如果以上都失败，尝试从MedlineDate解析
-            if pub_date.get('MedlineDate'):
-                medline_date = pub_date.get('MedlineDate')
-                # 尝试匹配YYYY MMM DD格式
-                match = re.search(r'(\d{4})\s+([A-Za-z]{3})(?:\s+(\d{1,2}))?', medline_date)
-                if match:
-                    y, m, d = match.groups()
-                    if m in month_map:
-                        m = month_map[m]
-                    else:
-                        m = '01'
-                    
-                    if d:
-                        try:
-                            d_num = int(d)
-                            return f"{y}-{m}-{d_num:02d}"
-                        except (ValueError, TypeError):
-                            pass
-                    return f"{y}-{m}-01"
-                
-                # 尝试只匹配年份
-                year_match = re.search(r'(\d{4})', medline_date)
-                if year_match:
-                    return f"{year_match.group(1)}-01-01"
-            
-            return "未知日期"
-            
-        except Exception as e:
-            safe_print(f"提取发表日期时出错: {e}", self.verbose)
-            return "未知日期"
+    def _extract_doi(self, article):
+        """提取DOI"""
+        if article.get('PubmedData', {}).get('ArticleIdList'):
+            for article_id in article['PubmedData']['ArticleIdList']:
+                if hasattr(article_id, 'attributes'):
+                    id_type = article_id.attributes.get('IdType')
+                    if id_type == 'doi':
+                        return str(article_id)
+        return ""
+    
+    def _extract_journal_name(self, article_data):
+        """提取期刊名称"""
+        journal = article_data.get('Journal', {})
+        return remove_html_tags(
+            journal.get('Title', journal.get('ISOAbbreviation', '未知期刊'))
+        )
     
     def _get_citation_counts(self, publications):
         """获取文章引用次数"""
@@ -720,12 +601,21 @@ class PubMedFetcher:
             if output_dir and not os.path.exists(output_dir):
                 os.makedirs(output_dir)
             
+            # 收集字段并写入CSV
+            base_fields = [
+                'pmid', 'title', 'authors', 'affiliations', 
+                'journal', 'pub_date', 'doi', 'citations',
+                'keywords', 'abstract'
+            ]
+            
+            # 添加可能存在的附加字段(例如search_query)
+            all_fields = set()
+            for pub in publications:
+                all_fields.update(pub.keys())
+            
+            fieldnames = base_fields + [f for f in sorted(all_fields) if f not in base_fields]
+            
             with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
-                fieldnames = [
-                    'pmid', 'title', 'authors', 'affiliations', 
-                    'journal', 'pub_date', 'doi', 'citations',
-                    'keywords', 'abstract'
-                ]
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 
@@ -744,11 +634,8 @@ class PubMedFetcher:
 def main():
     """主程序入口"""
     try:
-        # 默认邮箱，如果配置文件中有，将被覆盖
-        default_email = "your.email@example.com"
-        
         # 初始化PubMed获取器
-        fetcher = PubMedFetcher(default_email, verbose=True)
+        fetcher = PubMedFetcher(verbose=True)
         
         # 获取文献
         publications = fetcher.fetch_publications()
