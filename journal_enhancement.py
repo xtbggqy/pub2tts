@@ -34,6 +34,13 @@ except ImportError:
             import sys
             sys.stdout.flush()
 
+# 导入可视化模块（如果可用）
+try:
+    from journal_viz import JournalVisualizer
+    VISUALIZATION_AVAILABLE = True
+except ImportError:
+    VISUALIZATION_AVAILABLE = False
+
 class JournalEnhancer:
     def __init__(self, config_file="pub.txt", verbose=False, log_file=None):
         """初始化期刊信息增强处理工具
@@ -62,7 +69,8 @@ class JournalEnhancer:
             'journal_data_path': "D:\\zotero\\zotero_file\\zoterostyle.json",
             'article_sort': 'impact_factor',  # 默认按影响因子排序
             'output_sort': 'pubmed_enhanced.csv',  # 改为output_sort
-            'input_sort': 'pubmed_results.csv'     # 改为input_sort
+            'input_sort': 'pubmed_results.csv',     # 改为input_sort
+            'viz_enabled': True,  # 默认启用可视化
         }
         
         try:
@@ -85,6 +93,8 @@ class JournalEnhancer:
                                     config['output_sort'] = value
                                 elif key == 'input_sort':   # 变量名修改
                                     config['input_sort'] = value
+                                elif key == 'viz_enabled':  # 新增可视化开关
+                                    config['viz_enabled'] = value.lower() in ['true', 'yes', 'y', '1']
                 safe_print(f"已从 {config_file} 加载排序和期刊数据配置", self.verbose)
             else:
                 safe_print(f"配置文件 {config_file} 不存在，使用默认设置", self.verbose)
@@ -110,6 +120,7 @@ class JournalEnhancer:
                 has_article_sort = False
                 has_input_sort = False
                 has_output_sort = False
+                has_viz_enabled = False  # 新增
                 
                 for line in lines:
                     if line.strip().startswith('journal_data_path='):
@@ -120,10 +131,12 @@ class JournalEnhancer:
                         has_input_sort = True
                     elif line.strip().startswith('output_sort='):
                         has_output_sort = True
+                    elif line.strip().startswith('viz_enabled='):  # 新增
+                        has_viz_enabled = True
                 
                 # 准备新的配置项
                 new_config = []
-                if not has_journal_data or not has_article_sort or not has_input_sort or not has_output_sort:
+                if not has_journal_data or not has_article_sort or not has_input_sort or not has_output_sort or not has_viz_enabled:
                     new_config.append("\n# 期刊信息和排序设置\n")
                     if not has_journal_data:
                         new_config.append(f"# 期刊数据文件路径\njournal_data_path={config['journal_data_path']}\n\n")
@@ -140,6 +153,9 @@ class JournalEnhancer:
                     if not has_output_sort:
                         new_config.append("# 输出文件路径(排序后的文献数据)\n")
                         new_config.append(f"output_sort={config['output_sort']}\n\n")
+                    if not has_viz_enabled:  # 新增
+                        new_config.append("# 是否启用可视化功能(yes/no)\n")
+                        new_config.append(f"viz_enabled={'yes' if config['viz_enabled'] else 'no'}\n\n")
                 
                 # 只有当需要添加新配置时才写入文件
                 if new_config:
@@ -162,7 +178,9 @@ class JournalEnhancer:
                     f.write("# 输入文件路径(排序前的文献数据)\n")
                     f.write(f"input_sort={config['input_sort']}\n\n")
                     f.write("# 输出文件路径(排序后的文献数据)\n")
-                    f.write(f"output_sort={config['output_sort']}\n")
+                    f.write(f"output_sort={config['output_sort']}\n\n")
+                    f.write("# 是否启用可视化功能(yes/no)\n")
+                    f.write(f"viz_enabled={'yes' if config['viz_enabled'] else 'no'}\n")
                 safe_print(f"已创建包含期刊和排序设置的配置文件: {config_file}", self.verbose)
         except Exception as e:
             safe_print(f"更新配置文件出错: {e}", self.verbose)
@@ -286,6 +304,9 @@ class JournalEnhancer:
             # 排序文章
             sorted_articles = self._sort_articles(articles)
             
+            # 新增：生成期刊数据可视化
+            self._generate_visualizations(sorted_articles, input_file)
+            
             return sorted_articles
             
         except Exception as e:
@@ -293,6 +314,40 @@ class JournalEnhancer:
             import traceback
             traceback.print_exc()
             return []
+    
+    def _generate_visualizations(self, articles, input_file):
+        """生成期刊数据可视化"""
+        # 检查是否启用可视化和是否可用
+        if not self.config.get('viz_enabled', True) or not VISUALIZATION_AVAILABLE:
+            if not VISUALIZATION_AVAILABLE:
+                safe_print("警告: 可视化功能不可用，请安装matplotlib", self.verbose)
+            return
+        
+        try:
+            # 初始化可视化工具
+            visualizer = JournalVisualizer(
+                config_file=self.config.get('config_file', 'pub.txt'),
+                verbose=self.verbose
+            )
+            
+            # 导出文章数据到临时文件用于可视化
+            input_for_viz = input_file or self.config.get('input_sort')
+            output_file = self.config.get('output_sort')
+            
+            # 使用增强后的数据生成可视化
+            safe_print("正在生成期刊数据可视化...", True)
+            chart_files = visualizer.visualize_journal_data(output_file)
+            
+            if chart_files:
+                safe_print(f"成功生成 {len(chart_files)} 个期刊数据图表", True)
+                for chart in chart_files:
+                    safe_print(f"  - {chart}", self.verbose)
+            else:
+                safe_print("未能生成任何图表", self.verbose)
+        except Exception as e:
+            safe_print(f"期刊可视化生成失败: {e}", self.verbose)
+            import traceback
+            traceback.print_exc()
     
     def _get_journal_info(self, journal_name):
         """获取期刊信息，包括影响因子和分区"""
@@ -369,13 +424,11 @@ class JournalEnhancer:
                 elif "if" in rank_data:
                     impact_factor = rank_data["if"]
                 
-                # 提取分区信息 - 添加常见的分区字段，包括sci和sciBase
+                # 提取分区信息
                 if "sci" in rank_data:
-                    # 您的JSON数据使用"sci"字段存储分区信息，如"Q1"
                     quartile = rank_data["sci"]
                     safe_print(f"从sci字段获取到分区信息: {quartile}", self.verbose)
                 elif "sciBase" in rank_data:
-                    # sciBase可能包含如"生物1区"这样的字符串
                     quartile = rank_data["sciBase"]
                     safe_print(f"从sciBase字段获取到分区信息: {quartile}", self.verbose)
                 elif "zone" in rank_data:

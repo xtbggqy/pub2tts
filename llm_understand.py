@@ -11,6 +11,7 @@ import tiktoken  # 添加tiktoken库用于计算token数量
 from tqdm import tqdm
 from openai import OpenAI
 from dotenv import load_dotenv
+import re
 
 # 导入日志工具，如果可用
 try:
@@ -78,6 +79,7 @@ class LiteratureTranslator:
             'api_base_url': 'https://dashscope.aliyuncs.com/compatible-mode/v1',  # API基础URL
             'api_price_input': 20.0,  # 默认输入价格：20元/百万tokens
             'api_price_output': 200.0,  # 默认输出价格：200元/百万tokens
+            'optimize_keywords': False,  # 是否使用大模型优化关键词
         }
         
         try:
@@ -112,6 +114,9 @@ class LiteratureTranslator:
                                         safe_print(f"API输出价格设置为: {config[key]} 元/百万tokens", self.verbose)
                                     except ValueError:
                                         safe_print(f"警告: 无效的API输出价格: '{value}'，使用默认值: 200.0元/百万tokens", True)
+                                elif key == 'optimize_keywords':
+                                    config['optimize_keywords'] = value.lower() in ['true', 'yes', 'y', '1']
+                                    safe_print(f"关键词优化设置为: {'启用' if config['optimize_keywords'] else '禁用'}", self.verbose)
                                 else:
                                     if key == 'input_llm':
                                         config['input_llm'] = value
@@ -164,7 +169,8 @@ class LiteratureTranslator:
             'api_key': '# 通义千问API密钥\napi_key=\n\n',  # 新增
             'api_base_url': '# API基础URL\napi_base_url=https://dashscope.aliyuncs.com/compatible-mode/v1\n\n',  # 新增
             'api_price_input': '# API输入价格（元/百万tokens）\napi_price_input=20.0\n\n',
-            'api_price_output': '# API输出价格（元/百万tokens）\napi_price_output=200.0\n\n'
+            'api_price_output': '# API输出价格（元/百万tokens）\napi_price_output=200.0\n\n',
+            'optimize_keywords': '# 是否使用大模型优化关键词\noptimize_keywords=False\n\n'
         }
         
         try:
@@ -215,7 +221,9 @@ class LiteratureTranslator:
                 f.write("# API输入价格（元/百万tokens）\n")
                 f.write(f"api_price_input={config['api_price_input']}\n\n")
                 f.write("# API输出价格（元/百万tokens）\n")
-                f.write(f"api_price_output={config['api_price_output']}\n")
+                f.write(f"api_price_output={config['api_price_output']}\n\n")
+                f.write("# 是否使用大模型优化关键词\n")
+                f.write(f"optimize_keywords={config['optimize_keywords']}\n")
             safe_print(f"已创建默认配置文件: {config_file}")
         except Exception as e:
             safe_print(f"创建默认配置文件失败: {e}")
@@ -266,6 +274,38 @@ class LiteratureTranslator:
         except:
             self.encoding = tiktoken.get_encoding("cl100k_base")
         safe_print("Token计数器初始化成功")
+    
+    def _count_tokens(self, text):
+        """计算文本的token数量
+        
+        Args:
+            text: 需要计算token数量的文本
+            
+        Returns:
+            int: token数量
+        """
+        try:
+            # 使用初始化时创建的编码器来计算token数量
+            if hasattr(self, 'encoding') and self.encoding:
+                return len(self.encoding.encode(text))
+            else:
+                # 如果编码器未初始化，则尝试重新创建
+                try:
+                    self.encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+                    return len(self.encoding.encode(text))
+                except:
+                    try:
+                        # 尝试使用基础编码器
+                        self.encoding = tiktoken.get_encoding("cl100k_base")
+                        return len(self.encoding.encode(text))
+                    except:
+                        # 所有方法都失败，使用简单估算
+                        safe_print("警告：无法使用tiktoken，使用简单字符数量估算", self.verbose)
+                        return len(text) // 4  # 简单估算：每4个字符约为1个token
+        except Exception as e:
+            safe_print(f"计算token数量时出错: {e}", self.verbose)
+            # 简单估算: 每4个字符约为1个token
+            return len(text) // 4
     
     def translate_and_enhance(self):
         """处理并翻译文献"""
@@ -323,7 +363,10 @@ class LiteratureTranslator:
                     # 翻译关键词
                     keywords = article.get('keywords', '')
                     if keywords:
-                        translated_keywords = self._translate_with_verification("关键词", keywords)
+                        if self.config['optimize_keywords']:
+                            translated_keywords = self._optimize_keywords(keywords)
+                        else:
+                            translated_keywords = keywords  # 不优化关键词时直接使用原始值
                         enhanced_article['translated_keywords'] = translated_keywords
                     else:
                         enhanced_article['translated_keywords'] = ""
@@ -430,16 +473,6 @@ class LiteratureTranslator:
                 if attempt < retries - 1:
                     sleep_time = 2 ** attempt  # 指数退避策略
                     safe_print(f"将在 {sleep_time} 秒后重试...", True)
-                    time.sleep(sleep_time)
-                else:
-                    safe_print("所有重试均失败", True)
-                    return "翻译失败，API调用错误"
-    
-    def _count_tokens(self, text):
-        """计算文本的token数量"""
-        try:
-            return len(self.encoding.encode(text))
-        except Exception as e:
             safe_print(f"计算token数量时出错: {e}", True)
             # 简单估算: 每4个字符约为1个token
             return len(text) // 4
@@ -503,7 +536,7 @@ class LiteratureTranslator:
             "quartile": quartile
         }
         
-        # 返回JSON格式的数据，而不是格式化的文本
+        # 返回JSON格式的数据，这样TTS模块可以根据用户选择提取内容
         formatted_text = f"@@DATA_BEGIN@@\n{json.dumps(article_data, ensure_ascii=False)}\n@@DATA_END@@\n\n"
         return formatted_text
     
@@ -540,13 +573,53 @@ class LiteratureTranslator:
                 os.makedirs(output_dir)
             
             with open(output_file, 'w', encoding='utf-8') as f:
-                f.writelines(contents)
+                # 如果contents是一个字符串列表，将其合并
+                content_text = ''.join(contents)
+                f.write(content_text)
             
             safe_print(f"成功保存翻译结果到 {output_file}", True)
             return True
         except Exception as e:
             safe_print(f"保存TXT文件失败: {e}", True)
             return False
+
+    def _optimize_keywords(self, keywords):
+        """优化关键词处理
+        
+        使用大模型对关键词进行优化、标准化，并添加通用学科分类
+        
+        Args:
+            keywords: 原始关键词字符串
+        
+        Returns:
+            优化后的关键词字符串
+        """
+        safe_print(f"正在使用大模型优化关键词: {keywords[:50]}{'...' if len(keywords) > 50 else ''}", self.verbose)
+        
+        prompt = f"""请对以下医学文献的关键词进行优化和标准化处理:
+
+原始关键词: {keywords}
+
+请按照以下要求处理:
+1. 将英文关键词翻译为准确的中文术语
+2. 保留专业术语的规范性和学术性
+3. 对相近概念进行合并和标准化
+4. 按照重要性排序，最重要的关键词放在最前面
+5. 以分号分隔各个关键词
+6. 如果能判断文献的学科分类，请在末尾添加1-2个学科分类词（如"肿瘤学"、"心血管学"、"神经科学"等）
+
+直接返回处理后的中文关键词，不需要解释理由。
+"""
+
+        optimized = self._call_ai_api(prompt)
+        
+        # 清理可能的前缀文本
+        optimized = re.sub(r'^.*?关键词[:：]\s*', '', optimized)
+        optimized = re.sub(r'^处理后的关键词[:：]\s*', '', optimized)
+        optimized = re.sub(r'^优化后的关键词[:：]\s*', '', optimized)
+        
+        safe_print(f"关键词优化完成: {optimized[:50]}{'...' if len(optimized) > 50 else ''}", self.verbose)
+        return optimized
 
 def main():
     """主程序入口"""

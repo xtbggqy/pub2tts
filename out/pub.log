@@ -1,520 +1,472 @@
-
 ================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:37:00
+PubMed文献处理系统日志 - 启动时间: 2025-04-14 11:20:17
 ================================================================================
 
-2025-04-03 02:37:00  === 文献处理流程开始 [2025-04-03 02:37:00] ===
-2025-04-03 02:37:00  
+2025-04-14 11:20:17  === 文献处理流程开始 [2025-04-14 11:20:17] ===
+2025-04-14 11:20:17  
 === 步骤 1: 文献检索 ===
-2025-04-03 02:37:00 [ERROR] 错误: 文献检索失败: PubMedFetcher.__init__() got an unexpected keyword argument 'log_file'
+2025-04-14 11:20:17  已从 .\pub2.txt 加载配置
 
 ================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:40:56
+PubMed文献处理系统日志 - 启动时间: 2025-04-14 11:20:17
 ================================================================================
 
-2025-04-03 02:40:56  === 文献处理流程开始 [2025-04-03 02:40:56] ===
-2025-04-03 02:40:56  
-=== 步骤 1: 文献检索 ===
-2025-04-03 02:40:56  已从 .\pub2.txt 加载配置
-
-================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:40:56
-================================================================================
-
-2025-04-03 02:40:56  AI客户端初始化成功，可以润色搜索词
-2025-04-03 02:40:56  PubMed检索初始化完成，使用邮箱: default@example.com
-2025-04-03 02:40:56  检测到3个查询关键词: pangenome, plant, genome
-2025-04-03 02:40:56  
-[1/3] 正在查询: 'pangenome'
-2025-04-03 02:40:56  开始润色搜索词: 'pangenome'
-2025-04-03 02:40:57  第一轮润色完成: 'Pangenome[MeSH Terms] OR Pangenome[All Fields] OR Pan-genome[All Fields]'
-2025-04-03 02:40:58  润色完成。原始搜索词: 'pangenome'
-2025-04-03 02:40:58  优化后的检索式: 'Pangenome[MeSH Terms] OR Pangenome[All Fields]'
-2025-04-03 02:40:59  找到 1319 篇文献，将获取前 10 篇详情
-2025-04-03 02:41:03  已跳过 1 篇没有摘要的文章
-2025-04-03 02:41:03  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:41:03  查询 'pangenome' 获取到 10 篇文献
-2025-04-03 02:41:03  
-[2/3] 正在查询: 'plant'
-2025-04-03 02:41:03  开始润色搜索词: 'plant'
-2025-04-03 02:41:03  检测到基础关键词，使用简单检索式: '"plant"[MeSH Terms] OR "plant"[All Fields]'
-2025-04-03 02:41:04  找到 135497 篇文献，将获取前 10 篇详情
-2025-04-03 02:41:05  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:41:05  查询 'plant' 获取到 10 篇文献
-2025-04-03 02:41:05  
-[3/3] 正在查询: 'genome'
-2025-04-03 02:41:05  开始润色搜索词: 'genome'
-2025-04-03 02:41:05  检测到基础关键词，使用简单检索式: '"genome"[MeSH Terms] OR "genome"[All Fields]'
-2025-04-03 02:41:06  找到 117029 篇文献，将获取前 10 篇详情
-2025-04-03 02:41:09  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:41:09  查询 'genome' 获取到 10 篇文献
-2025-04-03 02:41:09  多关键词查询完成，共获取 30 篇文献
-2025-04-03 02:41:09  成功导出 30 篇文献到: out//pubmed_results.csv
-2025-04-03 02:41:09 [SUCCESS] 成功: 文献检索完成
-2025-04-03 02:41:09  
+2025-04-14 11:20:17  PubMed检索初始化完成，使用邮箱: default@example.com
+2025-04-14 11:20:17  检测到2个查询关键词: chestnut, Castanea
+2025-04-14 11:20:17  
+[1/2] 正在查询: 'chestnut'
+2025-04-14 11:20:17  执行PubMed高级搜索: (chestnut) AND (2020/04/15[Date - Publication] : 2025/04/14[Date - Publication])
+2025-04-14 11:20:17  正在查询PubMed索引数据库...
+2025-04-14 11:20:18  ✓ 检索完成! 共找到 4195 篇相关文献，将获取前 50 篇详情
+2025-04-14 11:21:39  已跳过 3 篇没有摘要的文章
+2025-04-14 11:21:39  ✓ 查询完成! 成功获取 50 篇文献信息 (有摘要文章)
+2025-04-14 11:21:39  查询 'chestnut' 获取到 50 篇文献
+2025-04-14 11:21:39  
+[2/2] 正在查询: 'Castanea'
+2025-04-14 11:21:39  执行PubMed高级搜索: (Castanea) AND (2020/04/15[Date - Publication] : 2025/04/14[Date - Publication])
+2025-04-14 11:21:39  正在查询PubMed索引数据库...
+2025-04-14 11:21:40  ✓ 检索完成! 共找到 446 篇相关文献，将获取前 50 篇详情
+2025-04-14 11:22:14  ✓ 查询完成! 成功获取 50 篇文献信息 (有摘要文章)
+2025-04-14 11:22:14  查询 'Castanea' 获取到 50 篇文献
+2025-04-14 11:22:14  多关键词查询完成，共获取 88 篇不重复文献
+2025-04-14 11:22:14  已过滤 12 篇重复文献
+2025-04-14 11:22:14  成功导出 88 篇文献到: out//pubmed_results.csv
+2025-04-14 11:22:14 [SUCCESS] 成功: 文献检索完成
+2025-04-14 11:22:14  
 === 步骤 2: 期刊信息增强 ===
 
 ================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:41:09
+PubMed文献处理系统日志 - 启动时间: 2025-04-14 11:22:14
 ================================================================================
 
-2025-04-03 02:41:09  已从 .\pub2.txt 加载排序和期刊数据配置
-2025-04-03 02:41:09  成功加载期刊数据: zoterostyle.json
-2025-04-03 02:41:09  共加载 642 个期刊, 示例期刊: Nature Communications, Molecular Biology and Evolution, Molecular Ecology
-2025-04-03 02:41:09  期刊 'Nature Communications' 的数据结构: {"cufe": "AAA", "swjtu": "A++", "nju": "学科群一流期刊", "xju": "一区", "cug": "综合性期刊T1", "sciif": "16.6", "sci": "Q1", "sciBase": "综合性期刊1区", "sciUp": "综合性期刊1区", "sciUpSmall": "综合性期刊1区", "scu": "综合性期刊A-", "sci
-2025-04-03 02:41:09  期刊 'Nature Communications' 的影响因子: 16.6
-2025-04-03 02:41:09  期刊 'Molecular Biology and Evolution' 的数据结构: {"swjtu": "A++", "nju": "B", "xju": "一区", "cug": "生物T1", "sciif": "10.7", "sci": "Q1", "sciBase": "生物1区", "sciUp": "生物学1区", "sciUpSmall": "遗传学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "15.1", "
-2025-04-03 02:41:09  期刊 'Molecular Biology and Evolution' 的影响因子: 10.7
-2025-04-03 02:41:09  期刊 'Molecular Ecology' 的数据结构: {"swjtu": "A++", "xju": "一区", "cug": "生物T2", "sciif": "4.9", "sci": "Q1", "sciBase": "生物2区", "sciUp": "生物学1区", "sciUpSmall": "生态学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "5.6", "jci": "1.25", 
-2025-04-03 02:41:09  期刊 'Molecular Ecology' 的影响因子: 4.9
-2025-04-03 02:41:09  期刊信息增强处理工具初始化完成，已加载 642 本期刊信息
-2025-04-03 02:41:09  CSV文件开头内容预览:
+2025-04-14 11:22:14  已从 .\pub2.txt 加载排序和期刊数据配置
+2025-04-14 11:22:14  成功加载期刊数据: zoterostyle.json
+2025-04-14 11:22:14  共加载 642 个期刊, 示例期刊: Nature Communications, Molecular Biology and Evolution, Molecular Ecology
+2025-04-14 11:22:14  期刊 'Nature Communications' 的数据结构: {"cufe": "AAA", "swjtu": "A++", "nju": "学科群一流期刊", "xju": "一区", "cug": "综合性期刊T1", "sciif": "16.6", "sci": "Q1", "sciBase": "综合性期刊1区", "sciUp": "综合性期刊1区", "sciUpSmall": "综合性期刊1区", "scu": "综合性期刊A-", "sci
+2025-04-14 11:22:14  期刊 'Nature Communications' 的影响因子: 16.6
+2025-04-14 11:22:14  期刊 'Molecular Biology and Evolution' 的数据结构: {"swjtu": "A++", "nju": "B", "xju": "一区", "cug": "生物T1", "sciif": "10.7", "sci": "Q1", "sciBase": "生物1区", "sciUp": "生物学1区", "sciUpSmall": "遗传学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "15.1", "
+2025-04-14 11:22:14  期刊 'Molecular Biology and Evolution' 的影响因子: 10.7
+2025-04-14 11:22:14  期刊 'Molecular Ecology' 的数据结构: {"swjtu": "A++", "xju": "一区", "cug": "生物T2", "sciif": "4.9", "sci": "Q1", "sciBase": "生物2区", "sciUp": "生物学1区", "sciUpSmall": "生态学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "5.6", "jci": "1.25", 
+2025-04-14 11:22:14  期刊 'Molecular Ecology' 的影响因子: 4.9
+2025-04-14 11:22:14  期刊信息增强处理工具初始化完成，已加载 642 本期刊信息
+2025-04-14 11:22:14  CSV文件开头内容预览:
 pmid,title,authors,affiliations,journal,pub_date,doi,citations,keywords,abstract,search_query
-37316654,A pangenome reference of 36 Chinese populations.,Gao Yang; Yang Xiaofei; Chen Hao; Tan Xinjiang; ...
-2025-04-03 02:41:09  CSV列名: pmid, title, authors, affiliations, journal, pub_date, doi, citations, keywords, abstract, search_query
-2025-04-03 02:41:09  成功读取 30 篇文章数据
-2025-04-03 02:41:09  文章 1 期刊名称: 'Nature'
-2025-04-03 02:41:09  文章 2 期刊名称: 'Nature methods'
-2025-04-03 02:41:09  文章 3 期刊名称: 'Nature genetics'
-2025-04-03 02:41:09  文章 4 期刊名称: 'Microbial genomics'
-2025-04-03 02:41:09  文章 5 期刊名称: 'Annual review of genomics and human genetics'
-2025-04-03 02:41:09  处理期刊名称: 原始='Nature', 去括号='Nature'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Nature' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 64.8
-2025-04-03 02:41:09  处理期刊名称: 原始='Nature methods', 去括号='Nature methods'
-2025-04-03 02:41:09  通过去除括号匹配到期刊: 'Nature methods' -> 'Nature Methods'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Nature Methods' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 48.0
-2025-04-03 02:41:09  处理期刊名称: 原始='Nature genetics', 去括号='Nature genetics'
-2025-04-03 02:41:09  通过去除括号匹配到期刊: 'Nature genetics' -> 'Nature Genetics'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Nature Genetics' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 30.8
-2025-04-03 02:41:09  处理期刊名称: 原始='Microbial genomics', 去括号='Microbial genomics'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q2
-2025-04-03 02:41:09  成功为期刊 'Microbial genomics' 获取分区信息: Q2
-2025-04-03 02:41:09  成功添加影响因子: 3.9
-2025-04-03 02:41:09  处理期刊名称: 原始='Annual review of genomics and human genetics', 去括号='Annual review of genomics and human genetics'
-2025-04-03 02:41:09  通过去除括号匹配到期刊: 'Annual review of genomics and human genetics' -> 'Annual Review of Genomics and Human Genetics'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Annual Review of Genomics and Human Genetics' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 8.7
-2025-04-03 02:41:09  处理期刊名称: 原始='Bioinformatics (Oxford, England)', 去括号='Bioinformatics'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Bioinformatics (Oxford, England)' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 5.8
-2025-04-03 02:41:09  处理期刊名称: 原始='Briefings in bioinformatics', 去括号='Briefings in bioinformatics'
-2025-04-03 02:41:09  通过去除括号匹配到期刊: 'Briefings in bioinformatics' -> 'Briefings in Bioinformatics'
-2025-04-03 02:41:09  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:09  成功为期刊 'Briefings in Bioinformatics' 获取分区信息: Q1
-2025-04-03 02:41:09  成功添加影响因子: 9.5
-2025-04-03 02:41:09  处理期刊名称: 原始='bioRxiv : the preprint server for biology', 去括号='bioRxiv : the preprint server for biology'
-2025-04-03 02:41:10  期刊名称 'bioRxiv : the preprint server for biology' 匹配到 'bioRxiv: The Preprint Server for Biology', 相似度: 0.90
-2025-04-03 02:41:10  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:41:10  处理期刊名称: 原始='IEEE transactions on visualization and computer graphics', 去括号='IEEE transactions on visualization and computer graphics'
-2025-04-03 02:41:10  期刊名称 'IEEE transactions on visualization and computer graphics' 匹配到 'IEEE/ACM Transactions on Computational Biology and Bioinformatics', 相似度: 0.63
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'IEEE/ACM Transactions on Computational Biology and Bioinformatics' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 3.6
-2025-04-03 02:41:10  处理期刊名称: 原始='Molecular plant', 去括号='Molecular plant'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Molecular plant' -> 'Molecular Plant'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Molecular Plant' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 27.5
-2025-04-03 02:41:10  处理期刊名称: 原始='Nature reviews. Molecular cell biology', 去括号='Nature reviews. Molecular cell biology'
-2025-04-03 02:41:10  期刊名称 'Nature reviews. Molecular cell biology' 匹配到 'Nature Reviews Microbiology', 相似度: 0.78
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Nature Reviews Microbiology' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 88.1
-2025-04-03 02:41:10  处理期刊名称: 原始='Trends in plant science', 去括号='Trends in plant science'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Trends in plant science' -> 'Trends in Plant Science'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Trends in Plant Science' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 20.5
-2025-04-03 02:41:10  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 56.9
-2025-04-03 02:41:10  处理期刊名称: 原始='Annual review of plant biology', 去括号='Annual review of plant biology'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Annual review of plant biology' -> 'Annual Review of Plant Biology'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Annual Review of Plant Biology' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 21.3
-2025-04-03 02:41:10  处理期刊名称: 原始='Annual review of plant biology', 去括号='Annual review of plant biology'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Annual review of plant biology' -> 'Annual Review of Plant Biology'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Annual Review of Plant Biology' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 21.3
-2025-04-03 02:41:10  处理期刊名称: 原始='Trends in ecology & evolution', 去括号='Trends in ecology & evolution'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Trends in ecology & evolution' -> 'Trends in Ecology & Evolution'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Trends in Ecology & Evolution' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 16.8
-2025-04-03 02:41:10  处理期刊名称: 原始='Journal of agricultural and food chemistry', 去括号='Journal of agricultural and food chemistry'
-2025-04-03 02:41:10  期刊名称 'Journal of agricultural and food chemistry' 匹配到 'Journal of Genetics and Genomics', 相似度: 0.62
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Journal of Genetics and Genomics' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 5.9
-2025-04-03 02:41:10  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 56.9
-2025-04-03 02:41:10  处理期刊名称: 原始='Current opinion in plant biology', 去括号='Current opinion in plant biology'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Current opinion in plant biology' -> 'Current Opinion in Plant Biology'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Current Opinion in Plant Biology' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 8.3
-2025-04-03 02:41:10  处理期刊名称: 原始='Current opinion in plant biology', 去括号='Current opinion in plant biology'
-2025-04-03 02:41:10  通过去除括号匹配到期刊: 'Current opinion in plant biology' -> 'Current Opinion in Plant Biology'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Current Opinion in Plant Biology' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 8.3
-2025-04-03 02:41:10  处理期刊名称: 原始='Trends in genetics : TIG', 去括号='Trends in genetics : TIG'
-2025-04-03 02:41:10  期刊名称 'Trends in genetics : TIG' 匹配到 'Trends in genetics: TIG', 相似度: 0.90
-2025-04-03 02:41:10  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:41:10  处理期刊名称: 原始='Nature reviews. Cancer', 去括号='Nature reviews. Cancer'
-2025-04-03 02:41:10  期刊名称 'Nature reviews. Cancer' 匹配到 'Nature Reviews Cancer', 相似度: 0.90
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Nature Reviews Cancer' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 78.5
-2025-04-03 02:41:10  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 56.9
-2025-04-03 02:41:10  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:41:10  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:10  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:41:10  成功添加影响因子: 56.9
-2025-04-03 02:41:10  处理期刊名称: 原始='Nature reviews. Molecular cell biology', 去括号='Nature reviews. Molecular cell biology'
-2025-04-03 02:41:11  期刊名称 'Nature reviews. Molecular cell biology' 匹配到 'Nature Reviews Microbiology', 相似度: 0.78
-2025-04-03 02:41:11  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:11  成功为期刊 'Nature Reviews Microbiology' 获取分区信息: Q1
-2025-04-03 02:41:11  成功添加影响因子: 88.1
-2025-04-03 02:41:11  处理期刊名称: 原始='Annual review of genetics', 去括号='Annual review of genetics'
-2025-04-03 02:41:11  通过去除括号匹配到期刊: 'Annual review of genetics' -> 'Annual Review of Genetics'
-2025-04-03 02:41:11  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:11  成功为期刊 'Annual Review of Genetics' 获取分区信息: Q1
-2025-04-03 02:41:11  成功添加影响因子: 11.1
-2025-04-03 02:41:11  处理期刊名称: 原始='Molecular cell', 去括号='Molecular cell'
-2025-04-03 02:41:11  期刊名称 'Molecular cell' 匹配到 'Molecular Ecology', 相似度: 0.77
-2025-04-03 02:41:11  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:11  成功为期刊 'Molecular Ecology' 获取分区信息: Q1
-2025-04-03 02:41:11  成功添加影响因子: 4.9
-2025-04-03 02:41:11  处理期刊名称: 原始='Trends in genetics : TIG', 去括号='Trends in genetics : TIG'
-2025-04-03 02:41:11  期刊名称 'Trends in genetics : TIG' 匹配到 'Trends in genetics: TIG', 相似度: 0.90
-2025-04-03 02:41:11  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:41:11  处理期刊名称: 原始='Current opinion in genetics & development', 去括号='Current opinion in genetics & development'
-2025-04-03 02:41:11  通过去除括号匹配到期刊: 'Current opinion in genetics & development' -> 'Current Opinion in Genetics & Development'
-2025-04-03 02:41:11  从sci字段获取到分区信息: Q2
-2025-04-03 02:41:11  成功为期刊 'Current Opinion in Genetics & Development' 获取分区信息: Q2
-2025-04-03 02:41:11  成功添加影响因子: 3.7
-2025-04-03 02:41:11  处理期刊名称: 原始='Nucleic acids research', 去括号='Nucleic acids research'
-2025-04-03 02:41:11  从sci字段获取到分区信息: Q1
-2025-04-03 02:41:11  成功为期刊 'Nucleic acids research' 获取分区信息: Q1
-2025-04-03 02:41:11  成功添加影响因子: 14.9
-2025-04-03 02:41:11  文章总数: 30, 包含期刊名称: 30, 成功匹配影响因子: 27
-2025-04-03 02:41:11  按 impact_factor 排序文章
-2025-04-03 02:41:11  成功导出 30 篇文章到: out//pubmed_enhanced.csv
-2025-04-03 02:41:11 [SUCCESS] 成功: 期刊信息增强完成
-2025-04-03 02:41:11  
-=== 步骤 3: 文献翻译与理解 ===
-2025-04-03 02:41:11 [ERROR] 错误: 文献翻译失败: LiteratureTranslator.__init__() got an unexpected keyword argument 'log_file'
-
-================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:46:16
-================================================================================
-
-2025-04-03 02:46:16  === 文献处理流程开始 [2025-04-03 02:46:16] ===
-2025-04-03 02:46:16  
-=== 步骤 1: 文献检索 ===
-2025-04-03 02:46:16  已从 .\pub2.txt 加载配置
-
-================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:46:16
-================================================================================
-
-2025-04-03 02:46:16  AI客户端初始化成功，可以润色搜索词
-2025-04-03 02:46:16  PubMed检索初始化完成，使用邮箱: default@example.com
-2025-04-03 02:46:16  检测到3个查询关键词: pangenome, plant, genome
-2025-04-03 02:46:16  
-[1/3] 正在查询: 'pangenome'
-2025-04-03 02:46:16  开始润色搜索词: 'pangenome'
-2025-04-03 02:46:16  第一轮润色完成: 'Pangenome[MeSH Terms] OR Pan-genome[Title/Abstract] OR Pangenomes[All Fields]'
-2025-04-03 02:46:17  润色完成。原始搜索词: 'pangenome'
-2025-04-03 02:46:17  优化后的检索式: 'Pangenome[MeSH Terms] OR Pangenome[All Fields]'
-2025-04-03 02:46:18  找到 1319 篇文献，将获取前 10 篇详情
-2025-04-03 02:46:22  已跳过 1 篇没有摘要的文章
-2025-04-03 02:46:22  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:46:22  查询 'pangenome' 获取到 10 篇文献
-2025-04-03 02:46:22  
-[2/3] 正在查询: 'plant'
-2025-04-03 02:46:22  开始润色搜索词: 'plant'
-2025-04-03 02:46:22  检测到基础关键词，使用简单检索式: '"plant"[MeSH Terms] OR "plant"[All Fields]'
-2025-04-03 02:46:23  找到 135497 篇文献，将获取前 10 篇详情
-2025-04-03 02:46:48  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:46:48  查询 'plant' 获取到 10 篇文献
-2025-04-03 02:46:48  
-[3/3] 正在查询: 'genome'
-2025-04-03 02:46:48  开始润色搜索词: 'genome'
-2025-04-03 02:46:48  检测到基础关键词，使用简单检索式: '"genome"[MeSH Terms] OR "genome"[All Fields]'
-2025-04-03 02:46:49  找到 117029 篇文献，将获取前 10 篇详情
-2025-04-03 02:46:50  成功获取 10 篇文献信息 (有摘要文章)
-2025-04-03 02:46:50  查询 'genome' 获取到 10 篇文献
-2025-04-03 02:46:50  多关键词查询完成，共获取 30 篇文献
-2025-04-03 02:46:50  成功导出 30 篇文献到: out//pubmed_results.csv
-2025-04-03 02:46:50 [SUCCESS] 成功: 文献检索完成
-2025-04-03 02:46:50  
-=== 步骤 2: 期刊信息增强 ===
-
-================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:46:50
-================================================================================
-
-2025-04-03 02:46:50  已从 .\pub2.txt 加载排序和期刊数据配置
-2025-04-03 02:46:50  成功加载期刊数据: zoterostyle.json
-2025-04-03 02:46:50  共加载 642 个期刊, 示例期刊: Nature Communications, Molecular Biology and Evolution, Molecular Ecology
-2025-04-03 02:46:50  期刊 'Nature Communications' 的数据结构: {"cufe": "AAA", "swjtu": "A++", "nju": "学科群一流期刊", "xju": "一区", "cug": "综合性期刊T1", "sciif": "16.6", "sci": "Q1", "sciBase": "综合性期刊1区", "sciUp": "综合性期刊1区", "sciUpSmall": "综合性期刊1区", "scu": "综合性期刊A-", "sci
-2025-04-03 02:46:50  期刊 'Nature Communications' 的影响因子: 16.6
-2025-04-03 02:46:50  期刊 'Molecular Biology and Evolution' 的数据结构: {"swjtu": "A++", "nju": "B", "xju": "一区", "cug": "生物T1", "sciif": "10.7", "sci": "Q1", "sciBase": "生物1区", "sciUp": "生物学1区", "sciUpSmall": "遗传学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "15.1", "
-2025-04-03 02:46:50  期刊 'Molecular Biology and Evolution' 的影响因子: 10.7
-2025-04-03 02:46:50  期刊 'Molecular Ecology' 的数据结构: {"swjtu": "A++", "xju": "一区", "cug": "生物T2", "sciif": "4.9", "sci": "Q1", "sciBase": "生物2区", "sciUp": "生物学1区", "sciUpSmall": "生态学1区/生化与分子生物学2区/进化生物学2区", "scu": "生物学B", "sciif5": "5.6", "jci": "1.25", 
-2025-04-03 02:46:50  期刊 'Molecular Ecology' 的影响因子: 4.9
-2025-04-03 02:46:50  期刊信息增强处理工具初始化完成，已加载 642 本期刊信息
-2025-04-03 02:46:50  CSV文件开头内容预览:
-pmid,title,authors,affiliations,journal,pub_date,doi,citations,keywords,abstract,search_query
-37316654,A pangenome reference of 36 Chinese populations.,Gao Yang; Yang Xiaofei; Chen Hao; Tan Xinjiang; ...
-2025-04-03 02:46:50  CSV列名: pmid, title, authors, affiliations, journal, pub_date, doi, citations, keywords, abstract, search_query
-2025-04-03 02:46:50  成功读取 30 篇文章数据
-2025-04-03 02:46:50  文章 1 期刊名称: 'Nature'
-2025-04-03 02:46:50  文章 2 期刊名称: 'Nature methods'
-2025-04-03 02:46:50  文章 3 期刊名称: 'Nature genetics'
-2025-04-03 02:46:50  文章 4 期刊名称: 'Microbial genomics'
-2025-04-03 02:46:50  文章 5 期刊名称: 'Annual review of genomics and human genetics'
-2025-04-03 02:46:50  处理期刊名称: 原始='Nature', 去括号='Nature'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Nature' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 64.8
-2025-04-03 02:46:50  处理期刊名称: 原始='Nature methods', 去括号='Nature methods'
-2025-04-03 02:46:50  通过去除括号匹配到期刊: 'Nature methods' -> 'Nature Methods'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Nature Methods' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 48.0
-2025-04-03 02:46:50  处理期刊名称: 原始='Nature genetics', 去括号='Nature genetics'
-2025-04-03 02:46:50  通过去除括号匹配到期刊: 'Nature genetics' -> 'Nature Genetics'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Nature Genetics' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 30.8
-2025-04-03 02:46:50  处理期刊名称: 原始='Microbial genomics', 去括号='Microbial genomics'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q2
-2025-04-03 02:46:50  成功为期刊 'Microbial genomics' 获取分区信息: Q2
-2025-04-03 02:46:50  成功添加影响因子: 3.9
-2025-04-03 02:46:50  处理期刊名称: 原始='Annual review of genomics and human genetics', 去括号='Annual review of genomics and human genetics'
-2025-04-03 02:46:50  通过去除括号匹配到期刊: 'Annual review of genomics and human genetics' -> 'Annual Review of Genomics and Human Genetics'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Annual Review of Genomics and Human Genetics' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 8.7
-2025-04-03 02:46:50  处理期刊名称: 原始='Bioinformatics (Oxford, England)', 去括号='Bioinformatics'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Bioinformatics (Oxford, England)' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 5.8
-2025-04-03 02:46:50  处理期刊名称: 原始='Briefings in bioinformatics', 去括号='Briefings in bioinformatics'
-2025-04-03 02:46:50  通过去除括号匹配到期刊: 'Briefings in bioinformatics' -> 'Briefings in Bioinformatics'
-2025-04-03 02:46:50  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:50  成功为期刊 'Briefings in Bioinformatics' 获取分区信息: Q1
-2025-04-03 02:46:50  成功添加影响因子: 9.5
-2025-04-03 02:46:50  处理期刊名称: 原始='bioRxiv : the preprint server for biology', 去括号='bioRxiv : the preprint server for biology'
-2025-04-03 02:46:50  期刊名称 'bioRxiv : the preprint server for biology' 匹配到 'bioRxiv: The Preprint Server for Biology', 相似度: 0.90
-2025-04-03 02:46:50  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:46:50  处理期刊名称: 原始='IEEE transactions on visualization and computer graphics', 去括号='IEEE transactions on visualization and computer graphics'
-2025-04-03 02:46:51  期刊名称 'IEEE transactions on visualization and computer graphics' 匹配到 'IEEE/ACM Transactions on Computational Biology and Bioinformatics', 相似度: 0.63
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'IEEE/ACM Transactions on Computational Biology and Bioinformatics' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 3.6
-2025-04-03 02:46:51  处理期刊名称: 原始='Molecular plant', 去括号='Molecular plant'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Molecular plant' -> 'Molecular Plant'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Molecular Plant' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 27.5
-2025-04-03 02:46:51  处理期刊名称: 原始='Nature reviews. Molecular cell biology', 去括号='Nature reviews. Molecular cell biology'
-2025-04-03 02:46:51  期刊名称 'Nature reviews. Molecular cell biology' 匹配到 'Nature Reviews Microbiology', 相似度: 0.78
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Nature Reviews Microbiology' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 88.1
-2025-04-03 02:46:51  处理期刊名称: 原始='Trends in plant science', 去括号='Trends in plant science'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Trends in plant science' -> 'Trends in Plant Science'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Trends in Plant Science' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 20.5
-2025-04-03 02:46:51  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 56.9
-2025-04-03 02:46:51  处理期刊名称: 原始='Annual review of plant biology', 去括号='Annual review of plant biology'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Annual review of plant biology' -> 'Annual Review of Plant Biology'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Annual Review of Plant Biology' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 21.3
-2025-04-03 02:46:51  处理期刊名称: 原始='Annual review of plant biology', 去括号='Annual review of plant biology'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Annual review of plant biology' -> 'Annual Review of Plant Biology'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Annual Review of Plant Biology' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 21.3
-2025-04-03 02:46:51  处理期刊名称: 原始='Trends in ecology & evolution', 去括号='Trends in ecology & evolution'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Trends in ecology & evolution' -> 'Trends in Ecology & Evolution'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Trends in Ecology & Evolution' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 16.8
-2025-04-03 02:46:51  处理期刊名称: 原始='Journal of agricultural and food chemistry', 去括号='Journal of agricultural and food chemistry'
-2025-04-03 02:46:51  期刊名称 'Journal of agricultural and food chemistry' 匹配到 'Journal of Genetics and Genomics', 相似度: 0.62
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Journal of Genetics and Genomics' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 5.9
-2025-04-03 02:46:51  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 56.9
-2025-04-03 02:46:51  处理期刊名称: 原始='Current opinion in plant biology', 去括号='Current opinion in plant biology'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Current opinion in plant biology' -> 'Current Opinion in Plant Biology'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Current Opinion in Plant Biology' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 8.3
-2025-04-03 02:46:51  处理期刊名称: 原始='Current opinion in plant biology', 去括号='Current opinion in plant biology'
-2025-04-03 02:46:51  通过去除括号匹配到期刊: 'Current opinion in plant biology' -> 'Current Opinion in Plant Biology'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Current Opinion in Plant Biology' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 8.3
-2025-04-03 02:46:51  处理期刊名称: 原始='Trends in genetics : TIG', 去括号='Trends in genetics : TIG'
-2025-04-03 02:46:51  期刊名称 'Trends in genetics : TIG' 匹配到 'Trends in genetics: TIG', 相似度: 0.90
-2025-04-03 02:46:51  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:46:51  处理期刊名称: 原始='Nature reviews. Cancer', 去括号='Nature reviews. Cancer'
-2025-04-03 02:46:51  期刊名称 'Nature reviews. Cancer' 匹配到 'Nature Reviews Cancer', 相似度: 0.90
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Nature Reviews Cancer' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 78.5
-2025-04-03 02:46:51  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 56.9
-2025-04-03 02:46:51  处理期刊名称: 原始='Science (New York, N.Y.)', 去括号='Science'
-2025-04-03 02:46:51  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:51  成功为期刊 'Science (New York, N.Y.)' 获取分区信息: Q1
-2025-04-03 02:46:51  成功添加影响因子: 56.9
-2025-04-03 02:46:51  处理期刊名称: 原始='Nature reviews. Molecular cell biology', 去括号='Nature reviews. Molecular cell biology'
-2025-04-03 02:46:52  期刊名称 'Nature reviews. Molecular cell biology' 匹配到 'Nature Reviews Microbiology', 相似度: 0.78
-2025-04-03 02:46:52  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:52  成功为期刊 'Nature Reviews Microbiology' 获取分区信息: Q1
-2025-04-03 02:46:52  成功添加影响因子: 88.1
-2025-04-03 02:46:52  处理期刊名称: 原始='Annual review of genetics', 去括号='Annual review of genetics'
-2025-04-03 02:46:52  通过去除括号匹配到期刊: 'Annual review of genetics' -> 'Annual Review of Genetics'
-2025-04-03 02:46:52  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:52  成功为期刊 'Annual Review of Genetics' 获取分区信息: Q1
-2025-04-03 02:46:52  成功添加影响因子: 11.1
-2025-04-03 02:46:52  处理期刊名称: 原始='Molecular cell', 去括号='Molecular cell'
-2025-04-03 02:46:52  期刊名称 'Molecular cell' 匹配到 'Molecular Ecology', 相似度: 0.77
-2025-04-03 02:46:52  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:52  成功为期刊 'Molecular Ecology' 获取分区信息: Q1
-2025-04-03 02:46:52  成功添加影响因子: 4.9
-2025-04-03 02:46:52  处理期刊名称: 原始='Trends in genetics : TIG', 去括号='Trends in genetics : TIG'
-2025-04-03 02:46:52  期刊名称 'Trends in genetics : TIG' 匹配到 'Trends in genetics: TIG', 相似度: 0.90
-2025-04-03 02:46:52  提取期刊信息出错: 'str' object has no attribute 'keys'
-2025-04-03 02:46:52  处理期刊名称: 原始='Current opinion in genetics & development', 去括号='Current opinion in genetics & development'
-2025-04-03 02:46:52  通过去除括号匹配到期刊: 'Current opinion in genetics & development' -> 'Current Opinion in Genetics & Development'
-2025-04-03 02:46:52  从sci字段获取到分区信息: Q2
-2025-04-03 02:46:52  成功为期刊 'Current Opinion in Genetics & Development' 获取分区信息: Q2
-2025-04-03 02:46:52  成功添加影响因子: 3.7
-2025-04-03 02:46:52  处理期刊名称: 原始='Nucleic acids research', 去括号='Nucleic acids research'
-2025-04-03 02:46:52  从sci字段获取到分区信息: Q1
-2025-04-03 02:46:52  成功为期刊 'Nucleic acids research' 获取分区信息: Q1
-2025-04-03 02:46:52  成功添加影响因子: 14.9
-2025-04-03 02:46:52  文章总数: 30, 包含期刊名称: 30, 成功匹配影响因子: 27
-2025-04-03 02:46:52  按 impact_factor 排序文章
-2025-04-03 02:46:52  成功导出 30 篇文章到: out//pubmed_enhanced.csv
-2025-04-03 02:46:52 [SUCCESS] 成功: 期刊信息增强完成
-2025-04-03 02:46:52  
+34658691,Tree nut allergy.,Kuźmiński Andrzej; Przybyszewski Michał; Przybyszewska Justyna; Ukleja-Sokołows...
+2025-04-14 11:22:14  CSV列名: pmid, title, authors, affiliations, journal, pub_date, doi, citations, keywords, abstract, search_query
+2025-04-14 11:22:14  成功读取 88 篇文章数据
+2025-04-14 11:22:14  文章 1 期刊名称: 'Postepy dermatologii i alergologii'
+2025-04-14 11:22:14  文章 2 期刊名称: 'Proceedings of the National Academy of Sciences of the United States of America'
+2025-04-14 11:22:14  文章 3 期刊名称: 'Complementary medicine research'
+2025-04-14 11:22:14  文章 4 期刊名称: 'Foods (Basel, Switzerland)'
+2025-04-14 11:22:14  文章 5 期刊名称: 'Der Hautarzt; Zeitschrift fur Dermatologie, Venerologie, und verwandte Gebiete'
+2025-04-14 11:22:14  处理期刊名称: 原始='Postepy dermatologii i alergologii', 去括号='Postepy dermatologii i alergologii'
+2025-04-14 11:22:14  未找到期刊 'Postepy dermatologii i alergologii' 的匹配信息
+2025-04-14 11:22:14  处理期刊名称: 原始='Proceedings of the National Academy of Sciences of the United States of America', 去括号='Proceedings of the National Academy of Sciences of the United States of America'
+2025-04-14 11:22:14  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:14  成功为期刊 'Proceedings of the National Academy of Sciences of the United States of America' 获取分区信息: Q1
+2025-04-14 11:22:14  成功添加影响因子: 11.1
+2025-04-14 11:22:14  处理期刊名称: 原始='Complementary medicine research', 去括号='Complementary medicine research'
+2025-04-14 11:22:14  期刊名称 'Complementary medicine research' 匹配到 'Ornamental Plant Research', 相似度: 0.61
+2025-04-14 11:22:14  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:14  处理期刊名称: 原始='Foods (Basel, Switzerland)', 去括号='Foods'
+2025-04-14 11:22:14  期刊名称 'Foods (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:14  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:14  处理期刊名称: 原始='Der Hautarzt; Zeitschrift fur Dermatologie, Venerologie, und verwandte Gebiete', 去括号='Der Hautarzt; Zeitschrift fur Dermatologie, Venerologie, und verwandte Gebiete'
+2025-04-14 11:22:14  未找到期刊 'Der Hautarzt; Zeitschrift fur Dermatologie, Venerologie, und verwandte Gebiete' 的匹配信息
+2025-04-14 11:22:14  处理期刊名称: 原始='Molecular phylogenetics and evolution', 去括号='Molecular phylogenetics and evolution'
+2025-04-14 11:22:14  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:14  成功为期刊 'Molecular phylogenetics and evolution' 获取分区信息: Q1
+2025-04-14 11:22:14  成功添加影响因子: 4.1
+2025-04-14 11:22:14  处理期刊名称: 原始='Journal of food biochemistry', 去括号='Journal of food biochemistry'
+2025-04-14 11:22:15  期刊名称 'Journal of food biochemistry' 匹配到 'Soil Biology and Biochemistry', 相似度: 0.67
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:15  成功为期刊 'Soil Biology and Biochemistry' 获取分区信息: Q1
+2025-04-14 11:22:15  成功添加影响因子: 9.7
+2025-04-14 11:22:15  处理期刊名称: 原始='Food chemistry', 去括号='Food chemistry'
+2025-04-14 11:22:15  期刊名称 'Food chemistry' 匹配到 'Soil Biology and Biochemistry', 相似度: 0.60
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:15  成功为期刊 'Soil Biology and Biochemistry' 获取分区信息: Q1
+2025-04-14 11:22:15  成功添加影响因子: 9.7
+2025-04-14 11:22:15  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:15  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:15  成功添加影响因子: 5.6
+2025-04-14 11:22:15  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:15  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:15  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:15  处理期刊名称: 原始='Food chemistry', 去括号='Food chemistry'
+2025-04-14 11:22:15  期刊名称 'Food chemistry' 匹配到 'Soil Biology and Biochemistry', 相似度: 0.60
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:15  成功为期刊 'Soil Biology and Biochemistry' 获取分区信息: Q1
+2025-04-14 11:22:15  成功添加影响因子: 9.7
+2025-04-14 11:22:15  处理期刊名称: 原始='Journal of chromatography. A', 去括号='Journal of chromatography. A'
+2025-04-14 11:22:15  期刊名称 'Journal of chromatography. A' 匹配到 'Journal of Biogeography', 相似度: 0.76
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q2
+2025-04-14 11:22:15  成功为期刊 'Journal of Biogeography' 获取分区信息: Q2
+2025-04-14 11:22:15  成功添加影响因子: 3.9
+2025-04-14 11:22:15  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:15  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:15  处理期刊名称: 原始='Journal of food science', 去括号='Journal of food science'
+2025-04-14 11:22:15  期刊名称 'Journal of food science' 匹配到 'Journal of insect science (Online)', 相似度: 0.69
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:15  成功为期刊 'Journal of insect science (Online)' 获取分区信息: Q1
+2025-04-14 11:22:15  成功添加影响因子: 2.2
+2025-04-14 11:22:15  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:15  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:15  处理期刊名称: 原始='Antioxidants (Basel, Switzerland)', 去括号='Antioxidants'
+2025-04-14 11:22:15  期刊名称 'Antioxidants (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:15  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:15  处理期刊名称: 原始='Animal : an international journal of animal bioscience', 去括号='Animal : an international journal of animal bioscience'
+2025-04-14 11:22:15  期刊名称 'Animal : an international journal of animal bioscience' 匹配到 'International Journal of Plant Sciences', 相似度: 0.77
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:15  成功为期刊 'International Journal of Plant Sciences' 获取分区信息: Q3
+2025-04-14 11:22:15  成功添加影响因子: 1.5
+2025-04-14 11:22:15  处理期刊名称: 原始='International journal of dermatology', 去括号='International journal of dermatology'
+2025-04-14 11:22:15  期刊名称 'International journal of dermatology' 匹配到 'International ophthalmology', 相似度: 0.73
+2025-04-14 11:22:15  从sci字段获取到分区信息: Q4
+2025-04-14 11:22:15  成功为期刊 'International ophthalmology' 获取分区信息: Q4
+2025-04-14 11:22:15  成功添加影响因子: 1.6
+2025-04-14 11:22:15  处理期刊名称: 原始='Food chemistry', 去括号='Food chemistry'
+2025-04-14 11:22:16  期刊名称 'Food chemistry' 匹配到 'Soil Biology and Biochemistry', 相似度: 0.60
+2025-04-14 11:22:16  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:16  成功为期刊 'Soil Biology and Biochemistry' 获取分区信息: Q1
+2025-04-14 11:22:16  成功添加影响因子: 9.7
+2025-04-14 11:22:16  处理期刊名称: 原始='Mitochondrial DNA. Part B, Resources', 去括号='Mitochondrial DNA. Part B, Resources'
+2025-04-14 11:22:16  未找到期刊 'Mitochondrial DNA. Part B, Resources' 的匹配信息
+2025-04-14 11:22:16  处理期刊名称: 原始='Journal of agricultural and food chemistry', 去括号='Journal of agricultural and food chemistry'
+2025-04-14 11:22:16  期刊名称 'Journal of agricultural and food chemistry' 匹配到 'Journal of Genetics and Genomics', 相似度: 0.62
+2025-04-14 11:22:16  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:16  成功为期刊 'Journal of Genetics and Genomics' 获取分区信息: Q1
+2025-04-14 11:22:16  成功添加影响因子: 5.9
+2025-04-14 11:22:16  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:16  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:16  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:16  处理期刊名称: 原始='Scientific reports', 去括号='Scientific reports'
+2025-04-14 11:22:16  从sci字段获取到分区信息: Q2
+2025-04-14 11:22:16  成功为期刊 'Scientific reports' 获取分区信息: Q2
+2025-04-14 11:22:16  成功添加影响因子: 4.6
+2025-04-14 11:22:16  处理期刊名称: 原始='Carbohydrate polymers', 去括号='Carbohydrate polymers'
+2025-04-14 11:22:16  未找到期刊 'Carbohydrate polymers' 的匹配信息
+2025-04-14 11:22:16  处理期刊名称: 原始='Frontiers in nutrition', 去括号='Frontiers in nutrition'
+2025-04-14 11:22:16  期刊名称 'Frontiers in nutrition' 匹配到 'Frontiers in Plant Science', 相似度: 0.71
+2025-04-14 11:22:16  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:16  成功为期刊 'Frontiers in Plant Science' 获取分区信息: Q1
+2025-04-14 11:22:16  成功添加影响因子: 5.6
+2025-04-14 11:22:16  处理期刊名称: 原始='Foods (Basel, Switzerland)', 去括号='Foods'
+2025-04-14 11:22:16  期刊名称 'Foods (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:16  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:16  处理期刊名称: 原始='Mass spectrometry reviews', 去括号='Mass spectrometry reviews'
+2025-04-14 11:22:16  未找到期刊 'Mass spectrometry reviews' 的匹配信息
+2025-04-14 11:22:16  处理期刊名称: 原始='Journal of functional biomaterials', 去括号='Journal of functional biomaterials'
+2025-04-14 11:22:17  期刊名称 'Journal of functional biomaterials' 匹配到 'Journal of theoretical biology', 相似度: 0.62
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:17  成功为期刊 'Journal of theoretical biology' 获取分区信息: Q3
+2025-04-14 11:22:17  成功添加影响因子: 2.0
+2025-04-14 11:22:17  处理期刊名称: 原始='Journal of the science of food and agriculture', 去括号='Journal of the science of food and agriculture'
+2025-04-14 11:22:17  期刊名称 'Journal of the science of food and agriculture' 匹配到 'Journal of insect science (Online)', 相似度: 0.64
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Journal of insect science (Online)' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 2.2
+2025-04-14 11:22:17  处理期刊名称: 原始='Advances in nutrition (Bethesda, Md.)', 去括号='Advances in nutrition'
+2025-04-14 11:22:17  未找到期刊 'Advances in nutrition (Bethesda, Md.)' 的匹配信息
+2025-04-14 11:22:17  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 5.6
+2025-04-14 11:22:17  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 5.6
+2025-04-14 11:22:17  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:17  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:17  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:17  处理期刊名称: 原始='Polymers', 去括号='Polymers'
+2025-04-14 11:22:17  未找到期刊 'Polymers' 的匹配信息
+2025-04-14 11:22:17  处理期刊名称: 原始='Collagen and leather', 去括号='Collagen and leather'
+2025-04-14 11:22:17  未找到期刊 'Collagen and leather' 的匹配信息
+2025-04-14 11:22:17  处理期刊名称: 原始='Wellcome open research', 去括号='Wellcome open research'
+2025-04-14 11:22:17  期刊名称 'Wellcome open research' 匹配到 'Genome Research', 相似度: 0.70
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Genome Research' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 7.0
+2025-04-14 11:22:17  处理期刊名称: 原始='Frontiers in pharmacology', 去括号='Frontiers in pharmacology'
+2025-04-14 11:22:17  期刊名称 'Frontiers in pharmacology' 匹配到 'Frontiers in Public Health', 相似度: 0.67
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Frontiers in Public Health' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 5.2
+2025-04-14 11:22:17  处理期刊名称: 原始='Frontiers in nutrition', 去括号='Frontiers in nutrition'
+2025-04-14 11:22:17  期刊名称 'Frontiers in nutrition' 匹配到 'Frontiers in Plant Science', 相似度: 0.71
+2025-04-14 11:22:17  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:17  成功为期刊 'Frontiers in Plant Science' 获取分区信息: Q1
+2025-04-14 11:22:17  成功添加影响因子: 5.6
+2025-04-14 11:22:17  处理期刊名称: 原始='Journal of applied microbiology', 去括号='Journal of applied microbiology'
+2025-04-14 11:22:18  期刊名称 'Journal of applied microbiology' 匹配到 'Journal of Molecular Biology', 相似度: 0.75
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:18  成功为期刊 'Journal of Molecular Biology' 获取分区信息: Q1
+2025-04-14 11:22:18  成功添加影响因子: 5.6
+2025-04-14 11:22:18  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:18  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:18  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:18  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:18  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:18  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:18  处理期刊名称: 原始='Food research international (Ottawa, Ont.)', 去括号='Food research international'
+2025-04-14 11:22:18  期刊名称 'Food research international (Ottawa, Ont.)' 匹配到 'BioMed research international', 相似度: 0.89
+2025-04-14 11:22:18  从sciBase字段获取到分区信息: 生物3区
+2025-04-14 11:22:18  成功为期刊 'BioMed research international' 获取分区信息: 生物3区
+2025-04-14 11:22:18  警告: 未获取到期刊 'Food research international (Ottawa, Ont.)' 的影响因子
+2025-04-14 11:22:18  处理期刊名称: 原始='Journal of fungi (Basel, Switzerland)', 去括号='Journal of fungi'
+2025-04-14 11:22:18  通过去除括号匹配到期刊: 'Journal of fungi (Basel, Switzerland)' -> 'Journal of Fungi'
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q2
+2025-04-14 11:22:18  成功为期刊 'Journal of Fungi' 获取分区信息: Q2
+2025-04-14 11:22:18  成功添加影响因子: 4.7
+2025-04-14 11:22:18  处理期刊名称: 原始='Foods (Basel, Switzerland)', 去括号='Foods'
+2025-04-14 11:22:18  期刊名称 'Foods (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:18  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:18  处理期刊名称: 原始='Respiratory medicine case reports', 去括号='Respiratory medicine case reports'
+2025-04-14 11:22:18  未找到期刊 'Respiratory medicine case reports' 的匹配信息
+2025-04-14 11:22:18  处理期刊名称: 原始='Foods (Basel, Switzerland)', 去括号='Foods'
+2025-04-14 11:22:18  期刊名称 'Foods (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:18  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:18  处理期刊名称: 原始='International journal of environmental research and public health', 去括号='International journal of environmental research and public health'
+2025-04-14 11:22:18  期刊名称 'International journal of environmental research and public health' 匹配到 'International Journal of Plant Sciences', 相似度: 0.63
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:18  成功为期刊 'International Journal of Plant Sciences' 获取分区信息: Q3
+2025-04-14 11:22:18  成功添加影响因子: 1.5
+2025-04-14 11:22:18  处理期刊名称: 原始='Journal of insect science (Online)', 去括号='Journal of insect science'
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:18  成功为期刊 'Journal of insect science (Online)' 获取分区信息: Q1
+2025-04-14 11:22:18  成功添加影响因子: 2.2
+2025-04-14 11:22:18  处理期刊名称: 原始='Journal of food science and technology', 去括号='Journal of food science and technology'
+2025-04-14 11:22:18  期刊名称 'Journal of food science and technology' 匹配到 'Journal of Animal Science and Biotechnology', 相似度: 0.84
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:18  成功为期刊 'Journal of Animal Science and Biotechnology' 获取分区信息: Q1
+2025-04-14 11:22:18  成功添加影响因子: 7.0
+2025-04-14 11:22:18  处理期刊名称: 原始='Molecular ecology', 去括号='Molecular ecology'
+2025-04-14 11:22:18  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:18  成功为期刊 'Molecular ecology' 获取分区信息: Q1
+2025-04-14 11:22:18  成功添加影响因子: 4.9
+2025-04-14 11:22:18  处理期刊名称: 原始='New forests', 去括号='New forests'
+2025-04-14 11:22:19  未找到期刊 'New forests' 的匹配信息
+2025-04-14 11:22:19  处理期刊名称: 原始='EFSA journal. European Food Safety Authority', 去括号='EFSA journal. European Food Safety Authority'
+2025-04-14 11:22:19  未找到期刊 'EFSA journal. European Food Safety Authority' 的匹配信息
+2025-04-14 11:22:19  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:19  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:19  处理期刊名称: 原始='Die Naturwissenschaften', 去括号='Die Naturwissenschaften'
+2025-04-14 11:22:19  未找到期刊 'Die Naturwissenschaften' 的匹配信息
+2025-04-14 11:22:19  处理期刊名称: 原始='Persoonia', 去括号='Persoonia'
+2025-04-14 11:22:19  未找到期刊 'Persoonia' 的匹配信息
+2025-04-14 11:22:19  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:19  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:19  处理期刊名称: 原始='PeerJ', 去括号='PeerJ'
+2025-04-14 11:22:19  未找到期刊 'PeerJ' 的匹配信息
+2025-04-14 11:22:19  处理期刊名称: 原始='FEMS microbiology letters', 去括号='FEMS microbiology letters'
+2025-04-14 11:22:19  期刊名称 'FEMS microbiology letters' 匹配到 'Ecology Letters', 相似度: 0.75
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:19  成功为期刊 'Ecology Letters' 获取分区信息: Q1
+2025-04-14 11:22:19  成功添加影响因子: 8.8
+2025-04-14 11:22:19  处理期刊名称: 原始='Molecular biology reports', 去括号='Molecular biology reports'
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:19  成功为期刊 'Molecular biology reports' 获取分区信息: Q3
+2025-04-14 11:22:19  成功添加影响因子: 2.8
+2025-04-14 11:22:19  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:19  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:19  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:19  处理期刊名称: 原始='Journal of cachexia, sarcopenia and muscle', 去括号='Journal of cachexia, sarcopenia and muscle'
+2025-04-14 11:22:19  期刊名称 'Journal of cachexia, sarcopenia and muscle' 匹配到 'Journal of Animal Science and Biotechnology', 相似度: 0.62
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:19  成功为期刊 'Journal of Animal Science and Biotechnology' 获取分区信息: Q1
+2025-04-14 11:22:19  成功添加影响因子: 7.0
+2025-04-14 11:22:19  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:19  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:19  成功添加影响因子: 5.6
+2025-04-14 11:22:19  处理期刊名称: 原始='International journal of molecular sciences', 去括号='International journal of molecular sciences'
+2025-04-14 11:22:19  通过去除括号匹配到期刊: 'International journal of molecular sciences' -> 'International Journal of Molecular Sciences'
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:19  成功为期刊 'International Journal of Molecular Sciences' 获取分区信息: Q1
+2025-04-14 11:22:19  成功添加影响因子: 5.6
+2025-04-14 11:22:19  处理期刊名称: 原始='Scientific reports', 去括号='Scientific reports'
+2025-04-14 11:22:19  从sci字段获取到分区信息: Q2
+2025-04-14 11:22:19  成功为期刊 'Scientific reports' 获取分区信息: Q2
+2025-04-14 11:22:19  成功添加影响因子: 4.6
+2025-04-14 11:22:19  处理期刊名称: 原始='Veterinary sciences', 去括号='Veterinary sciences'
+2025-04-14 11:22:19  期刊名称 'Veterinary sciences' 匹配到 'Biodiversity Science', 相似度: 0.67
+2025-04-14 11:22:19  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:19  处理期刊名称: 原始='EFSA journal. European Food Safety Authority', 去括号='EFSA journal. European Food Safety Authority'
+2025-04-14 11:22:20  未找到期刊 'EFSA journal. European Food Safety Authority' 的匹配信息
+2025-04-14 11:22:20  处理期刊名称: 原始='Frontiers in immunology', 去括号='Frontiers in immunology'
+2025-04-14 11:22:20  期刊名称 'Frontiers in immunology' 匹配到 'Frontiers in Plant Science', 相似度: 0.61
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Frontiers in Plant Science' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 5.6
+2025-04-14 11:22:20  处理期刊名称: 原始='Molecular plant pathology', 去括号='Molecular plant pathology'
+2025-04-14 11:22:20  通过去除括号匹配到期刊: 'Molecular plant pathology' -> 'Molecular Plant Pathology'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Molecular Plant Pathology' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 4.8
+2025-04-14 11:22:20  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:20  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:20  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:20  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:20  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 5.6
+2025-04-14 11:22:20  处理期刊名称: 原始='Ecology and evolution', 去括号='Ecology and evolution'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:20  成功为期刊 'Ecology and evolution' 获取分区信息: Q3
+2025-04-14 11:22:20  成功添加影响因子: 2.6
+2025-04-14 11:22:20  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 5.6
+2025-04-14 11:22:20  处理期刊名称: 原始='Carbohydrate polymers', 去括号='Carbohydrate polymers'
+2025-04-14 11:22:20  未找到期刊 'Carbohydrate polymers' 的匹配信息
+2025-04-14 11:22:20  处理期刊名称: 原始='Journal of plant physiology', 去括号='Journal of plant physiology'
+2025-04-14 11:22:20  期刊名称 'Journal of plant physiology' 匹配到 'Journal of Integrative Plant Biology', 相似度: 0.73
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Journal of Integrative Plant Biology' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 11.4
+2025-04-14 11:22:20  处理期刊名称: 原始='Frontiers in plant science', 去括号='Frontiers in plant science'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Frontiers in plant science' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 5.6
+2025-04-14 11:22:20  处理期刊名称: 原始='Antioxidants (Basel, Switzerland)', 去括号='Antioxidants'
+2025-04-14 11:22:20  期刊名称 'Antioxidants (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.81
+2025-04-14 11:22:20  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:20  处理期刊名称: 原始='International journal of environmental research and public health', 去括号='International journal of environmental research and public health'
+2025-04-14 11:22:20  期刊名称 'International journal of environmental research and public health' 匹配到 'International Journal of Plant Sciences', 相似度: 0.63
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q3
+2025-04-14 11:22:20  成功为期刊 'International Journal of Plant Sciences' 获取分区信息: Q3
+2025-04-14 11:22:20  成功添加影响因子: 1.5
+2025-04-14 11:22:20  处理期刊名称: 原始='Plants (Basel, Switzerland)', 去括号='Plants'
+2025-04-14 11:22:20  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:20  处理期刊名称: 原始='BMC genomics', 去括号='BMC genomics'
+2025-04-14 11:22:20  通过去除括号匹配到期刊: 'BMC genomics' -> 'BMC Genomics'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'BMC Genomics' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 4.4
+2025-04-14 11:22:20  处理期刊名称: 原始='Phytopathology', 去括号='Phytopathology'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q2
+2025-04-14 11:22:20  成功为期刊 'Phytopathology' 获取分区信息: Q2
+2025-04-14 11:22:20  成功添加影响因子: 3.2
+2025-04-14 11:22:20  处理期刊名称: 原始='Microbiology spectrum', 去括号='Microbiology spectrum'
+2025-04-14 11:22:20  期刊名称 'Microbiology spectrum' 匹配到 'Microbiological Research', 相似度: 0.67
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Microbiological Research' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 6.7
+2025-04-14 11:22:20  处理期刊名称: 原始='Phytochemistry', 去括号='Phytochemistry'
+2025-04-14 11:22:20  未找到期刊 'Phytochemistry' 的匹配信息
+2025-04-14 11:22:20  处理期刊名称: 原始='Insects', 去括号='Insects'
+2025-04-14 11:22:20  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:20  成功为期刊 'Insects' 获取分区信息: Q1
+2025-04-14 11:22:20  成功添加影响因子: 3.0
+2025-04-14 11:22:20  处理期刊名称: 原始='Phytomedicine : international journal of phytotherapy and phytopharmacology', 去括号='Phytomedicine : international journal of phytotherapy and phytopharmacology'
+2025-04-14 11:22:21  未找到期刊 'Phytomedicine : international journal of phytotherapy and phytopharmacology' 的匹配信息
+2025-04-14 11:22:21  处理期刊名称: 原始='Frontiers in microbiology', 去括号='Frontiers in microbiology'
+2025-04-14 11:22:21  期刊名称 'Frontiers in microbiology' 匹配到 'Nature microbiology', 相似度: 0.73
+2025-04-14 11:22:21  从sci字段获取到分区信息: Q1
+2025-04-14 11:22:21  成功为期刊 'Nature microbiology' 获取分区信息: Q1
+2025-04-14 11:22:21  成功添加影响因子: 28.3
+2025-04-14 11:22:21  处理期刊名称: 原始='MycoKeys', 去括号='MycoKeys'
+2025-04-14 11:22:21  期刊名称 'MycoKeys' 匹配到 'Mycology', 相似度: 0.62
+2025-04-14 11:22:21  未找到期刊 'Mycology' 的分区信息，请检查rank中的字段: ['sciUp', 'sciUpSmall']
+2025-04-14 11:22:21  警告: 未获取到期刊 'MycoKeys' 的影响因子
+2025-04-14 11:22:21  处理期刊名称: 原始='Molecules (Basel, Switzerland)', 去括号='Molecules'
+2025-04-14 11:22:21  期刊名称 'Molecules (Basel, Switzerland)' 匹配到 'Plants (Basel, Switzerland)', 相似度: 0.78
+2025-04-14 11:22:21  提取期刊信息出错: 'str' object has no attribute 'keys'
+2025-04-14 11:22:21  文章总数: 88, 包含期刊名称: 88, 成功匹配影响因子: 46
+2025-04-14 11:22:21  未能匹配影响因子的期刊 (前10个): ['Food research international (Ottawa, Ont.)', 'MycoKeys']
+2025-04-14 11:22:21  按 impact_factor 排序文章
+2025-04-14 11:22:21  已从配置文件加载可视化设置
+2025-04-14 11:22:21  期刊可视化工具初始化完成，使用 'modern' 主题
+2025-04-14 11:22:21  正在生成期刊数据可视化...
+2025-04-14 11:22:21  读取了 88 篇文章的期刊数据
+2025-04-14 11:22:21  成功生成影响因子趋势图: out/viz\impact_factor_chart.png
+2025-04-14 11:22:22  成功生成分区分布图: out/viz\quartile_chart.png
+2025-04-14 11:22:22  成功生成期刊分布图: out/viz\journal_chart.png
+2025-04-14 11:22:22  成功生成发表年份分布图: out/viz\year_chart.png
+2025-04-14 11:22:22  成功生成 4 个期刊数据图表
+2025-04-14 11:22:22    - out/viz\impact_factor_chart.png
+2025-04-14 11:22:22    - out/viz\quartile_chart.png
+2025-04-14 11:22:22    - out/viz\journal_chart.png
+2025-04-14 11:22:22    - out/viz\year_chart.png
+2025-04-14 11:22:22  成功导出 88 篇文章到: out//pubmed_enhanced.csv
+2025-04-14 11:22:22 [SUCCESS] 成功: 期刊信息增强完成
+2025-04-14 11:22:22  
 === 步骤 3: 文献翻译与理解 ===
 
 ================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:46:52
+PubMed文献处理系统日志 - 启动时间: 2025-04-14 11:22:22
 ================================================================================
 
-2025-04-03 02:46:52  已从 .\pub2.txt 加载配置
-2025-04-03 02:46:52  AI客户端初始化成功
-2025-04-03 02:46:52  API连接测试结果: API连接测试成功
-2025-04-03 02:46:52  Token计数器初始化成功
-2025-04-03 02:46:52  文献内容理解增强工具初始化完成
-2025-04-03 02:46:52  成功读取 30 篇文章，将处理前 3 篇
-2025-04-03 02:46:53  API调用完成，耗时: 0.36秒
-2025-04-03 02:46:53  API调用完成，耗时: 0.44秒
-2025-04-03 02:46:53  标题翻译并校验完成
-2025-04-03 02:46:54  API调用完成，耗时: 0.66秒
-2025-04-03 02:46:54  API调用完成，耗时: 0.63秒
-2025-04-03 02:46:54  关键词翻译并校验完成
-2025-04-03 02:46:56  API调用完成，耗时: 2.09秒
-2025-04-03 02:46:59  API调用完成，耗时: 2.12秒
-2025-04-03 02:46:59  摘要翻译并校验完成
-2025-04-03 02:46:59  API调用完成，耗时: 0.59秒
-2025-04-03 02:47:00  API调用完成，耗时: 0.53秒
-2025-04-03 02:47:00  标题翻译并校验完成
-2025-04-03 02:47:00  API调用完成，耗时: 0.72秒
-2025-04-03 02:47:01  API调用完成，耗时: 0.69秒
-2025-04-03 02:47:01  关键词翻译并校验完成
-2025-04-03 02:47:03  API调用完成，耗时: 2.36秒
-2025-04-03 02:47:06  API调用完成，耗时: 2.48秒
-2025-04-03 02:47:06  摘要翻译并校验完成
-2025-04-03 02:47:06  API调用完成，耗时: 0.35秒
-2025-04-03 02:47:07  API调用完成，耗时: 0.39秒
-2025-04-03 02:47:07  标题翻译并校验完成
-2025-04-03 02:47:07  API调用完成，耗时: 0.59秒
-2025-04-03 02:47:08  API调用完成，耗时: 1.07秒
-2025-04-03 02:47:08  关键词翻译并校验完成
-2025-04-03 02:47:11  API调用完成，耗时: 2.32秒
-2025-04-03 02:47:13  API调用完成，耗时: 2.02秒
-2025-04-03 02:47:13  摘要翻译并校验完成
-2025-04-03 02:47:13  成功保存 30 篇文章到 out//pubmed_enhanced_llm.csv
-2025-04-03 02:47:13  成功保存翻译结果到 out//pre4tts.txt
-2025-04-03 02:47:13  
+2025-04-14 11:22:22  已从 .\pub2.txt 加载配置
+2025-04-14 11:22:23  AI客户端初始化成功
+2025-04-14 11:22:23  API连接测试结果: API连接测试成功
+2025-04-14 11:22:23  Token计数器初始化成功
+2025-04-14 11:22:23  文献内容理解增强工具初始化完成
+2025-04-14 11:22:23  成功读取 88 篇文章，将处理前 3 篇
+2025-04-14 11:22:23  API调用完成，耗时: 0.35秒
+2025-04-14 11:22:24  API调用完成，耗时: 0.55秒
+2025-04-14 11:22:24  标题翻译并校验完成
+2025-04-14 11:22:27  API调用完成，耗时: 2.96秒
+2025-04-14 11:22:30  API调用完成，耗时: 3.01秒
+2025-04-14 11:22:30  摘要翻译并校验完成
+2025-04-14 11:22:31  API调用完成，耗时: 0.57秒
+2025-04-14 11:22:31  API调用完成，耗时: 0.82秒
+2025-04-14 11:22:31  标题翻译并校验完成
+2025-04-14 11:22:36  API调用完成，耗时: 4.71秒
+2025-04-14 11:22:40  API调用完成，耗时: 4.13秒
+2025-04-14 11:22:40  摘要翻译并校验完成
+2025-04-14 11:22:41  API调用完成，耗时: 0.48秒
+2025-04-14 11:22:41  API调用完成，耗时: 0.40秒
+2025-04-14 11:22:41  标题翻译并校验完成
+2025-04-14 11:22:46  API调用完成，耗时: 4.57秒
+2025-04-14 11:22:49  API调用完成，耗时: 3.60秒
+2025-04-14 11:22:49  摘要翻译并校验完成
+2025-04-14 11:22:49  成功保存 88 篇文章到 out//pubmed_enhanced_llm.csv
+2025-04-14 11:22:49  成功保存翻译结果到 out//pre4tts.txt
+2025-04-14 11:22:49  
 ==================================================
-2025-04-03 02:47:13  Token 使用统计:
-2025-04-03 02:47:13  总输入 tokens: 4837
-2025-04-03 02:47:13  总输出 tokens: 2617
-2025-04-03 02:47:13  总计 tokens: 7454
-2025-04-03 02:47:13  估算费用: ¥0.0030 (输入: ¥0.0015, 输出: ¥0.0016)
-2025-04-03 02:47:13  价格设置: 输入 ¥0.3/百万tokens, 输出 ¥0.6/百万tokens
-2025-04-03 02:47:13  ==================================================
-2025-04-03 02:47:13 [SUCCESS] 成功: 文献翻译与理解完成
-2025-04-03 02:47:13  
+2025-04-14 11:22:49  Token 使用统计:
+2025-04-14 11:22:49  总输入 tokens: 5027
+2025-04-14 11:22:49  总输出 tokens: 3177
+2025-04-14 11:22:49  总计 tokens: 8204
+2025-04-14 11:22:49  估算费用: ¥0.0034 (输入: ¥0.0015, 输出: ¥0.0019)
+2025-04-14 11:22:49  价格设置: 输入 ¥0.3/百万tokens, 输出 ¥0.6/百万tokens
+2025-04-14 11:22:49  ==================================================
+2025-04-14 11:22:49 [SUCCESS] 成功: 文献翻译与理解完成
+2025-04-14 11:22:49  
 === 步骤 4: 文本转语音 ===
 
 ================================================================================
-PubMed文献处理系统日志 - 启动时间: 2025-04-03 02:47:13
+PubMed文献处理系统日志 - 启动时间: 2025-04-14 11:22:49
 ================================================================================
 
-2025-04-03 02:47:13  TTS API客户端初始化成功
-2025-04-03 02:47:13  语音合成工具初始化完成
-2025-04-03 02:47:13  读取文件成功，内容预览: 文章 1
+2025-04-14 11:22:49  TTS API客户端初始化成功
+2025-04-14 11:22:49  语音合成工具初始化完成
+2025-04-14 11:22:49  已成功生成纯文本文件: out/pub4tts.txt
+2025-04-14 11:22:49  读取文件成功，内容预览: 文章 1
 
-标题：植物细胞壁的结构与形成
+标题：中国镰刀菌属真菌的隐匿多样性
 
-关键词：植物发育；纤维素；多糖；糖基转移酶；植物生长调节物质；细胞壁；植物细胞；植物；信号转导；植物蛋白质
-
-摘要：植物细胞构建了纳米级纤维素壁，这是植物生...
-2025-04-03 02:47:28  语音合成成功，已保存到: out\pre4tts.mp3
-2025-04-03 02:47:28  
+关键词：taxonomy; Allocryptovalsa; Diatrypella; Eutypella; fungal diversity; ph...
+2025-04-14 11:23:13  语音合成成功，已保存到: out\pre4tts.mp3
+2025-04-14 11:23:13  
 ==================================================
-2025-04-03 02:47:28  TTS 字符统计:
-2025-04-03 02:47:28  处理文件数: 1
-2025-04-03 02:47:28  总字符数: 1084
-2025-04-03 02:47:28  本次使用字符数: 1084，在免费额度(30,000字符/月)内
-2025-04-03 02:47:28  若不考虑免费额度，全部计费金额为: ¥0.11 (按¥1.0/万字符计算)
-2025-04-03 02:47:28  注意: 免费额度统计以服务提供商的月度结算为准
-2025-04-03 02:47:28  ==================================================
-2025-04-03 02:47:28 [SUCCESS] 成功: 文本转语音完成
-2025-04-03 02:47:28  
+2025-04-14 11:23:13  TTS 字符统计:
+2025-04-14 11:23:13  处理文件数: 1
+2025-04-14 11:23:13  总字符数: 1615
+2025-04-14 11:23:13  本次使用字符数: 1615，在免费额度(30,000字符/月)内
+2025-04-14 11:23:13  若不考虑免费额度，全部计费金额为: ¥0.16 (按¥1.0/万字符计算)
+2025-04-14 11:23:13  注意: 免费额度统计以服务提供商的月度结算为准
+2025-04-14 11:23:13  ==================================================
+2025-04-14 11:23:13 [SUCCESS] 成功: 文本转语音完成
+2025-04-14 11:23:13  
 ==================================================
-2025-04-03 02:47:28  文献处理流程完成
-2025-04-03 02:47:28  开始时间: 2025-04-03 02:46:16
-2025-04-03 02:47:28  结束时间: 2025-04-03 02:47:28
-2025-04-03 02:47:28  总耗时: 1分钟 12秒
-2025-04-03 02:47:28  ==================================================
+2025-04-14 11:23:13  文献处理流程完成
+2025-04-14 11:23:13  开始时间: 2025-04-14 11:20:17
+2025-04-14 11:23:13  结束时间: 2025-04-14 11:23:13
+2025-04-14 11:23:13  总耗时: 2分钟 55秒
+2025-04-14 11:23:13  ==================================================

@@ -153,7 +153,7 @@ def build_date_filter(time_period=None, start_date=None, end_date=None, verbose=
             end_date = normalize_date_format(end_date)
             
             if start_date and end_date:
-                date_filter = f"({start_date}[Date - Publication] : {end_date}[Date - Publication])"
+                date_filter = f" AND ({start_date}[Date - Publication] : {end_date}[Date - Publication])"
                 safe_print(f"使用指定起止日期过滤: {date_filter}", verbose)
                 return date_filter
         
@@ -168,7 +168,7 @@ def build_date_filter(time_period=None, start_date=None, end_date=None, verbose=
             start_date = past_date.strftime("%Y/%m/%d")
             end_date = current_date.strftime("%Y/%m/%d")
             
-            date_filter = f"({start_date}[Date - Publication] : {end_date}[Date - Publication])"
+            date_filter = f" AND ({start_date}[Date - Publication] : {end_date}[Date - Publication])"
             safe_print(f"使用时间周期过滤 ({time_period}年): {date_filter}", verbose)
             return date_filter
             
@@ -194,7 +194,7 @@ def normalize_date_format(date_str):
             year, month, day = parts
             # 简单验证
             if 1000 <= int(year) <= 9999 and 1 <= int(month) <= 12 and 1 <= int(day) <= 31:
-                return f"{year}/{month}/{day}"
+                return f"{year}/{month.zfill(2)}/{day.zfill(2)}"
         except ValueError:
             pass
     elif len(parts) == 2:
@@ -202,7 +202,7 @@ def normalize_date_format(date_str):
         try:
             year, month = parts
             if 1000 <= int(year) <= 9999 and 1 <= int(month) <= 12:
-                return f"{year}/{month}/01"
+                return f"{year}/{month.zfill(2)}/01"
         except ValueError:
             pass
     elif len(parts) == 1:

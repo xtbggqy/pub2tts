@@ -23,6 +23,13 @@ except ImportError as e:
     print("请确保所有必要的程序文件在同一目录下")
     sys.exit(1)
 
+# 导入可视化模块，如果可用
+try:
+    from journal_viz import JournalVisualizer
+    VISUALIZATION_AVAILABLE = True
+except ImportError:
+    VISUALIZATION_AVAILABLE = False
+
 # 全局变量控制日志输出级别
 VERBOSE_OUTPUT = False
 
@@ -48,6 +55,7 @@ class ProgressDisplay:
     running = False
     step_status = ["待处理", "待处理", "待处理", "待处理"]
     last_update = 0  # 上次更新时间
+    status_message = ""  # 添加状态信息
     
     @classmethod
     def start(cls):
@@ -55,6 +63,7 @@ class ProgressDisplay:
         cls.active = True
         cls.start_time = datetime.now()
         cls.running = True
+        cls.status_message = ""  # 初始化状态信息
         cls.animation_thread = threading.Thread(target=cls.animation_loop)
         cls.animation_thread.daemon = True
         cls.animation_thread.start()
@@ -65,6 +74,12 @@ class ProgressDisplay:
         with cls.lock:
             cls.current_step = step
             cls.step_status[step-1] = status
+    
+    @classmethod
+    def set_status(cls, message):
+        """设置状态信息"""
+        with cls.lock:
+            cls.status_message = message
     
     @classmethod
     def animation_loop(cls):
@@ -109,6 +124,10 @@ class ProgressDisplay:
         # 只显示当前正在进行的步骤，省略其他步骤
         current_step_info = f"{cls.step_names[cls.current_step-1]}[{cls.step_status[cls.current_step-1]}]"
         progress_info += current_step_info
+        
+        # 添加状态信息
+        if cls.status_message:
+            progress_info += f" | {cls.status_message}"
         
         # 裁剪到终端宽度
         if len(progress_info) > width:
@@ -308,6 +327,35 @@ class PubMedProcessor:
                 traceback.print_exc()
             return False
     
+    def _run_journal_visualization(self):
+        """单独运行期刊可视化"""
+        log("\n=== 期刊数据可视化 ===", True)
+        try:
+            if not VISUALIZATION_AVAILABLE:
+                error("可视化功能不可用，请安装matplotlib")
+                return False
+                
+            # 初始化可视化工具
+            visualizer = JournalVisualizer(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
+            
+            # 运行可视化
+            chart_files = visualizer.visualize_journal_data()
+            
+            if chart_files:
+                success(f"成功生成 {len(chart_files)} 个图表")
+                for chart in chart_files:
+                    info(f"  - {chart}", VERBOSE_OUTPUT)
+                return True
+            else:
+                warning("未能生成任何图表")
+                return False
+        except Exception as e:
+            error(f"生成可视化图表失败: {e}")
+            if VERBOSE_OUTPUT:
+                import traceback
+                traceback.print_exc()
+            return False
+
     def _print_summary(self):
         """打印处理总结"""
         end_time = datetime.now()
@@ -330,7 +378,8 @@ class PubMedProcessor:
                 'search': (self._run_pub_search, 1),
                 'enhance': (self._run_journal_enhancement, 2),
                 'translate': (self._run_llm_understand, 3),
-                'tts': (self._run_tts_conversion, 4)
+                'tts': (self._run_tts_conversion, 4),
+                'viz': (self._run_journal_visualization, 5)
             }
             
             if step not in steps:
@@ -369,7 +418,7 @@ def main():
     parser = argparse.ArgumentParser(description='PubMed文献处理全流程工具')
     # 添加命令行参数
     parser.add_argument('-s', '--steps', nargs='+', 
-                        choices=['search', 'enhance', 'translate', 'tts'], 
+                        choices=['search', 'enhance', 'translate', 'tts', 'viz'], 
                         help='选择要执行的一个或多个步骤，例如: -s search enhance')
     parser.add_argument('-c', '--config', default='pub.txt', 
                         help='配置文件路径(默认: pub.txt)')
@@ -381,6 +430,10 @@ def main():
                         help='日志文件路径(默认: out/pub.log)')
     parser.add_argument('--no-log', action='store_true',
                         help='禁用日志文件，只输出到终端')
+    parser.add_argument('--pure-text', action='store_true',
+                        help='生成纯文本内容文件，仅包含要转换为语音的文本')
+    parser.add_argument('--viz-only', action='store_true',
+                        help='仅运行可视化功能，使用已有的增强结果')
     args = parser.parse_args()
     
     # 设置全局日志输出级别
@@ -396,6 +449,21 @@ def main():
     try:
         processor = PubMedProcessor(args.config, log_file)
         
+        # 检查是否只生成纯文本
+        if args.pure_text:
+            log("仅生成纯文本内容文件", True)
+            # 初始化TTS转换器
+            converter = TtsConverter(args.config, verbose=VERBOSE_OUTPUT, log_file=log_file)
+            # 生成纯文本
+            converter.prepare_pure_text()
+            return
+        
+        # 检查是否只运行可视化
+        if args.viz_only:
+            log("仅执行期刊数据可视化", True)
+            processor._run_journal_visualization()
+            return
+
         if args.steps:
             # 显示将要执行的步骤
             steps_str = ', '.join(args.steps)
@@ -406,12 +474,13 @@ def main():
                 'search': (processor._run_pub_search, 1),
                 'enhance': (processor._run_journal_enhancement, 2),
                 'translate': (processor._run_llm_understand, 3),
-                'tts': (processor._run_tts_conversion, 4)
+                'tts': (processor._run_tts_conversion, 4),
+                'viz': (processor._run_journal_visualization, 5)
             }
             
             # 按顺序执行选定的步骤
             ordered_steps = sorted(args.steps, key=lambda s: step_funcs[s][1])
-            success = True
+            operation_success = True  # 修改变量名，避免与success函数冲突
             
             for step in ordered_steps:
                 func, step_idx = step_funcs[step]
@@ -421,7 +490,7 @@ def main():
                 if not func():
                     ProgressDisplay.step_status[step_idx-1] = "失败"
                     error(f"步骤 {step} 失败")
-                    success = False
+                    operation_success = False  # 使用新变量名
                     break
                 else:
                     ProgressDisplay.step_status[step_idx-1] = "完成"

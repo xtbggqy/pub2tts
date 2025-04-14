@@ -11,6 +11,7 @@ try:
     from openai import OpenAI
 except ImportError:
     OpenAI = None
+    print("提示: 未发现OpenAI模块，将无法使用搜索词润色功能。您可以通过运行 'pip install openai>=1.0.0' 安装此模块。")
 
 from pubmed_core import safe_print, fix_query_syntax
 
@@ -46,6 +47,7 @@ class SearchEnhancer:
         """初始化AI客户端，用于搜索词润色"""
         if OpenAI is None:
             safe_print("警告: 未安装OpenAI模块，无法润色搜索词", True)
+            safe_print("提示: 可通过运行 'pip install openai>=1.0.0' 安装该模块", True)
             return
         
         api_key = self.config.get('api_key', '')
@@ -53,6 +55,7 @@ class SearchEnhancer:
         
         if not api_key:
             safe_print("警告: API密钥未设置，无法润色搜索词", True)
+            safe_print("提示: 请在配置文件中设置api_key参数或在环境变量中设置DASHSCOPE_API_KEY", True)
             return
         
         try:
@@ -61,21 +64,45 @@ class SearchEnhancer:
                 base_url=api_base_url,
             )
             safe_print("AI客户端初始化成功，可以润色搜索词", self.verbose)
+            
+            # 检查API连接是否正常
+            try:
+                response = self.ai_client.chat.completions.create(
+                    model=self.config.get('ai_model', 'qwen-turbo'),
+                    messages=[
+                        {'role': 'system', 'content': '您好'},
+                        {'role': 'user', 'content': '请回复"连接测试成功"'}
+                    ],
+                    timeout=5,
+                    max_tokens=10
+                )
+                if "连接测试成功" in response.choices[0].message.content:
+                    safe_print("API连接测试成功", self.verbose)
+                else:
+                    safe_print("API连接测试结果不符合预期，但连接成功", self.verbose)
+            except Exception as e:
+                safe_print(f"API连接测试失败，但客户端初始化成功: {e}", self.verbose)
+                
         except Exception as e:
             safe_print(f"AI客户端初始化失败: {e}", True)
+            safe_print("提示: 请确保API密钥正确且有效，网络连接正常", True)
             self.ai_client = None
     
     def enhance_query(self, original_query):
         """使用AI润色搜索词，转换为PubMed高级检索格式，进行两轮优化"""
         if not self.ai_client:
             safe_print("AI客户端未初始化，无法润色搜索词", True)
+            safe_print("将使用原始搜索词进行检索", True)
             return original_query
         
         try:
             safe_print(f"开始润色搜索词: '{original_query}'", True)
             
             # 对于某些基础关键词，直接使用简单搜索格式而不是过度复杂化
-            if original_query.lower().strip() in ["plant", "genome", "bacteria", "virus", "cancer", "drug"]:
+            basic_keywords = ["plant", "genome", "bacteria", "virus", "cancer", "drug", 
+                             "disease", "protein", "gene", "cell", "mutation", "therapy"]
+            
+            if original_query.lower().strip() in basic_keywords:
                 # 为基础关键词构建简单而有效的检索式
                 simple_query = f'"{original_query}"[MeSH Terms] OR "{original_query}"[All Fields]'
                 safe_print(f"检测到基础关键词，使用简单检索式: '{simple_query}'", True)
@@ -90,7 +117,7 @@ class SearchEnhancer:
 1. 分析最核心的概念，为每个概念找到最合适的MeSH主题词和主要同义词
 2. 使用适当的字段限定词，如[All Fields]或[MeSH Terms]，避免过度限制检索范围
 3. 合理使用布尔运算符(AND, OR)和括号来构建搜索语句
-4. 保持简洁，整个检索式中OR连接的术语总数控制在3个以内
+4. 保持简洁，整个检索式中OR连接的术语总数控制在3-4个以内
 5. 确保语法准确，特别是引号、括号的匹配和字段标记的格式
 6. 检索式应该非常宽泛，确保能检索到足够多的文献
 7. 确保字段标记前没有多余空格，确保布尔运算符大写
@@ -98,6 +125,9 @@ class SearchEnhancer:
 
 增强后的PubMed检索式:"""
 
+            # 显示处理进度
+            safe_print("正在进行第一轮润色...", self.verbose)
+            
             # 调用AI API进行第一轮转换
             model = self.config.get('ai_model', 'qwen-turbo')
             timeout = self.config.get('ai_timeout', 30)
@@ -139,6 +169,9 @@ class SearchEnhancer:
 
 简化后的检索式:"""
 
+            # 显示处理进度
+            safe_print("正在进行第二轮优化...", self.verbose)
+            
             second_response = self.ai_client.chat.completions.create(
                 model=model,
                 messages=[
@@ -164,6 +197,10 @@ class SearchEnhancer:
                 safe_print("警告: 检索式缺少全局字段，将添加[All Fields]以确保检索有效", self.verbose)
                 final_enhanced_query = f'"{original_query}"[MeSH Terms] OR "{original_query}"[All Fields]'
             
+            # 检查检索式长度
+            if len(final_enhanced_query) > 200:
+                safe_print("警告: 检索式过长，可能过于复杂。考虑手动简化检索式以提高效率。", self.verbose)
+            
             safe_print(f"润色完成。原始搜索词: '{original_query}'", True)
             safe_print(f"优化后的检索式: '{final_enhanced_query}'", True)
             
@@ -171,6 +208,7 @@ class SearchEnhancer:
             
         except Exception as e:
             safe_print(f"润色搜索词失败: {e}", True)
+            safe_print("将使用安全的基本检索式", True)
             # 出错时返回一个安全的基本检索式，而不是原始查询
             safe_query = f'"{original_query}"[MeSH Terms] OR "{original_query}"[All Fields]'
             safe_print(f"使用基本检索式: '{safe_query}'", True)

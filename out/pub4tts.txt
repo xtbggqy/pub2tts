@@ -1,0 +1,21 @@
+中国镰刀菌属真菌的隐匿多样性
+
+taxonomy; Allocryptovalsa; Diatrypella; Eutypella; fungal diversity; phylogeny; Diatrype
+
+本研究基于ITS和tub2基因联合序列的形态-分子分析，对中国6个地区的壳囊孢科真菌多样性进行了研究。壳囊孢科被确认包含23属，其中18属出现在系统发育树中，另有5属由于缺乏活体材料及其序列数据未能纳入分析。研究中共记录了11个种，分属4属（即Allocryptovalsa、Diatrype、Diatrypella和Eutypella），这些种均从7种寄主植物中分离获得，其中包括9个新种（即Allocryptovalsa castaneae、A. castaneicola、Diatrype betulae、D. castaneicola、D. quercicola、Diatrypella betulae、Da. betulicola、Da. hubeiensis和Da. shennongensis）、1个已知种Diatrypella favacea以及1个首次从桑属植物中记录的Eutypella citricola。研究结果表明，中国壳囊孢科木生真菌具有较高多样性。
+
+
+板栗坚果发育过程中糖积累相关基因的差异表达分析
+
+China; Castanea mollissima; Carbohydrate Metabolism; Glucose metabolism; Transcriptome; Sugars; Starch; Differentially expressed genes; Nuts; Gene Expression Regulation, Plant
+
+毛栗（*Castanea mollissima* Bl.）是中国重要的粮食作物，富含营养成分。为探究毛栗果实发育过程中糖分积累的规律、与糖分积累相关的酶基因调控途径及毛栗糖分生物合成代谢的分子调控机制，本研究选取了糖分含量存在显著差异的两个毛栗品种——城步油柱（简称CBYZ）和安义1号（简称AY01），于开花后10天（DAF）、20 DAF、30 DAF、40 DAF、50 DAF、60 DAF、70 DAF、80 DAF和90 DAF时，分别检测两种毛栗坚果中的总糖和淀粉含量以及与糖分积累相关的酶活性。结果表明，淀粉、直链淀粉和支链淀粉含量的变化趋势与蔗糖磷酸合成酶、可溶性淀粉合成酶及颗粒结合型淀粉合成酶活性的变化相一致。在糖分积累的三个关键时期（30、60和90 DAF），共鉴定出24个与糖分生物合成和代谢相关的差异表达基因。进一步分析显示，与淀粉代谢相关基因如β-淀粉酶、GYS和INV的上调表达表明这些基因在AY01品种中表达水平较低，导致淀粉积累缓慢且糖分含量偏低；而PGK和MDH1等基因的下调表达则提示其在低糖品种中高表达，促进了糖分的快速分解利用。通过KEGG通路富集分析，阐明了毛栗不同发育阶段基因表达的上调或下调与其糖分含量变化之间的关联。上述研究结果为深入解析毛栗糖分生物合成机制提供了重要线索。
+
+
+Argonaute非依赖、Dicer依赖的RNA病毒抗病毒防御机制
+
+RNA Interference; Virus Replication; Argonaute Proteins; fungal virus; Argonaute; Dicer; Ribonuclease III; Ascomycota; RNA Viruses; RNA, Viral; chestnut blight; RNAi; Fungal Proteins; RNA, Double-Stranded
+
+病毒RNA干扰（RNAi）在酵母到哺乳动物中均高度保守。Dicer能够识别并切割由病毒来源的双链RNA（dsRNA）和/或结构化的单链RNA（ssRNA），生成小干扰RNA（siRNA），引导效应蛋白Argonaute靶向同源病毒RNA进行降解，从而抑制病毒复制。因此，Argonaute被认为是抗病毒RNAi的核心组成部分。然而，本研究通过以栗疫菌（Cryphonectria parasitica）为模式丝状子囊菌的实验发现，该生物体内存在一种独立于Argonaute但依赖于Dicer的抗病毒防御机制。栗疫菌含有两个Dicer样基因（dcl1和dcl2）以及四个Argonaute样基因（agl1至agl4）。我们构建了一系列单至四重agl敲除突变体，并结合dcl基因的破坏，系统评估了这些突变体对多种dsRNA病毒和ssRNA病毒的抗病毒活性。结果显示，尽管DCL2与AGL2在部分RNA病毒的抗病毒过程中发挥作用，但在缺乏Argonaute的情况下，DCL2仍可单独有效抑制其他RNA病毒的复制。总体而言，这些结果表明，存在一种仅依赖Dicer的抗病毒防御机制，且RNA病毒对该机制的敏感性存在显著差异。我们进一步探讨了决定RNA病毒对Dicer-only防御机制敏感性差异的关键因素。
+
+

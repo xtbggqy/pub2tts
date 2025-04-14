@@ -12,7 +12,7 @@ query=pangenome
 multi_query=pangenome,plant,genome
 
 # 是否润色搜索词(yes/no)，将使用AI优化搜索词，转换为PubMed高级检索格式
-enhance_query=yes
+enhance_query=no
 
 # 是否获取引用数量 yes/no (会多花几分钟)
 get_citations=no
@@ -91,6 +91,9 @@ api_key=
 # API基础URL
 api_base_url=https://dashscope.aliyuncs.com/compatible-mode/v1
 
+# 是否使用大模型优化关键词(yes/no)
+optimize_keywords=no
+
 # API价格设置（单位：元/百万tokens）
 # 输入token价格
 api_price_input=0.3
@@ -102,9 +105,7 @@ api_price_output=0.6
 #===============================
 # TTS模型/音色，每个月有免费的三万字符
 # 可选音色：https://help.aliyun.com/zh/model-studio/user-guide/text-to-speech
-# - sambert-zhichu-v1 (志芝女声)
-# - sambert-zhizhe-v1 (志哲男声)
-# - sambert-zhiying-v1 (志颖女声)
+# - sambert-zhichu-v1 (知厨 男声)
 tts_model=sambert-zhichu-v1
 
 # 音频格式(mp3/wav)
@@ -135,3 +136,55 @@ tts_directory=
 # - all_en: 所有英文内容（title_en + keywords_en + abstract_en）
 # - mixed: 中英混合（中文标题、关键词、摘要，若某部分翻译失败则使用英文）
 tts_content=all_zh
+
+#===============================
+# 期刊可视化设置
+#===============================
+# 是否启用可视化功能(yes/no)
+viz_enabled=yes
+
+# 可视化输出目录
+viz_output_dir=out/viz
+
+# 图表格式(png, jpg, pdf, svg)
+viz_format=png
+
+# 图表样式(ggplot, seaborn, classic, dark_background等)
+viz_style=ggplot
+
+# 图表DPI(分辨率)
+viz_dpi=300
+
+# 图表大小(宽,高，单位为英寸)
+viz_figsize=10,6
+
+# 是否显示影响因子趋势(yes/no)
+viz_show_if=yes
+
+# 是否显示分区分布(yes/no)
+viz_show_quartile=yes
+
+# 是否显示期刊分布(yes/no)
+viz_show_journals=yes
+
+# 是否显示发表年份分布(yes/no)
+viz_show_years=yes
+
+# 颜色主题(default, modern, pastel, dark, scientific)
+viz_color_theme=modern
+
+# 图表字体大小
+viz_font_size=11
+
+# 图表标题字体大小
+viz_title_size=14
+
+# 图表标签字体大小
+viz_label_size=12
+
+# 网格透明度(0-1)
+viz_grid_alpha=0.3
+
+# 是否启用交互式图表(yes/no)
+viz_interactive=no
+

@@ -200,9 +200,20 @@ class PubMedFetcher:
                 all_publications = []
                 max_per_query = max(1, int(self.config['max_results'] / len(queries)))
                 
+                # 用于追踪已处理的PMID，防止重复
+                processed_pmids = set()
+                duplicates_count = 0
+                
                 # 为每个查询执行搜索
                 for i, query in enumerate(queries):
                     safe_print(f"\n[{i+1}/{len(queries)}] 正在查询: '{query}'", True)
+                    
+                    # 更新进度条状态（如果在main模块中导入了ProgressDisplay）
+                    try:
+                        from main import ProgressDisplay
+                        ProgressDisplay.set_status(f"查询 {i+1}/{len(queries)}: {query}")
+                    except:
+                        pass
                     
                     # 临时修改配置
                     original_query = self.config['query']
@@ -213,11 +224,21 @@ class PubMedFetcher:
                     try:
                         publications = self._fetch_single_query()
                         if publications:
-                            # 添加查询关键词标记
+                            # 添加查询关键词标记并去重
                             for pub in publications:
                                 pub['search_query'] = query
+                                
+                                # 检查是否重复
+                                pmid = pub.get('pmid', '')
+                                if pmid and pmid in processed_pmids:
+                                    duplicates_count += 1
+                                    continue
+                                
+                                # 不重复，添加到结果并记录PMID
+                                if pmid:
+                                    processed_pmids.add(pmid)
+                                    all_publications.append(pub)
                             
-                            all_publications.extend(publications)
                             safe_print(f"查询 '{query}' 获取到 {len(publications)} 篇文献", True)
                         else:
                             safe_print(f"查询 '{query}' 未找到符合条件的文献", True)
@@ -233,7 +254,17 @@ class PubMedFetcher:
                 
                 # 返回结果
                 if all_publications:
-                    safe_print(f"多关键词查询完成，共获取 {len(all_publications)} 篇文献", True)
+                    safe_print(f"多关键词查询完成，共获取 {len(all_publications)} 篇不重复文献", True)
+                    if duplicates_count > 0:
+                        safe_print(f"已过滤 {duplicates_count} 篇重复文献", True)
+                    
+                    # 清除进度条状态
+                    try:
+                        from main import ProgressDisplay
+                        ProgressDisplay.set_status("")
+                    except:
+                        pass
+                    
                     return all_publications
                 else:
                     safe_print("所有查询均未找到符合条件的文献", True)
@@ -272,15 +303,24 @@ class PubMedFetcher:
             safe_print("查询已包含日期过滤，将使用原始查询中的日期条件", self.verbose)
             full_query = query
         
-        safe_print(f"执行PubMed高级搜索: {full_query}", self.verbose)
+        safe_print(f"执行PubMed高级搜索: {full_query}", True)  # 改为始终显示
         safe_print(f"排序方式: {sort_type}", self.verbose)
         
         # 检查查询语法和设置排序
         validate_search_query(full_query, self.verbose)
         sort_param = get_entrez_sort_param(sort_type, self.verbose)
         
+        # 更新进度显示
+        try:
+            from main import ProgressDisplay
+            ProgressDisplay.set_status(f"正在执行检索: {original_query}")
+        except:
+            pass
+        
         # 第一步: 使用ESearch获取文献ID列表
         try:
+            safe_print("正在查询PubMed索引数据库...", True)
+            
             def _esearch():
                 handle = Entrez.esearch(db="pubmed", term=full_query, retmax=max_results, sort=sort_param)
                 return Entrez.read(handle)
@@ -289,13 +329,21 @@ class PubMedFetcher:
             id_list = search_results.get("IdList", [])
             
             if not id_list:
-                safe_print("未找到符合条件的文献", self.verbose)
+                safe_print("未找到符合条件的文献", True)
                 return []
             
             total_count = int(search_results.get("Count", 0))
-            safe_print(f"找到 {total_count} 篇文献，将获取前 {len(id_list)} 篇详情", self.verbose)
+            safe_print(f"✓ 检索完成! 共找到 {total_count} 篇相关文献，将获取前 {len(id_list)} 篇详情", True)
+            
+            # 更新进度显示
+            try:
+                from main import ProgressDisplay
+                ProgressDisplay.set_status(f"找到 {total_count} 篇文献，准备获取详情")
+            except:
+                pass
+            
         except Exception as e:
-            safe_print(f"搜索过程出错: {e}", self.verbose)
+            safe_print(f"搜索过程出错: {e}", True)
             return []
         
         # 第二步: 获取文献详细信息
@@ -303,64 +351,107 @@ class PubMedFetcher:
         skipped_no_abstract = 0
         processed_ids = set()
         
-        # 分批处理ID，提取文献信息
-        while len(publications) < max_results:
-            # 获取未处理的ID
-            remaining_ids = [id for id in id_list if id not in processed_ids]
-            if not remaining_ids:
-                # 尝试获取更多ID
-                if len(publications) < max_results:
-                    try:
-                        additional_needed = (max_results - len(publications)) * 2
-                        more_ids = self._get_more_ids(full_query, len(id_list), additional_needed, sort_param)
-                        if more_ids:
-                            id_list.extend(more_ids)
-                            remaining_ids = [id for id in more_ids if id not in processed_ids]
-                        else:
+        # 创建一个进度条
+        with tqdm(total=min(len(id_list), max_results), desc="获取文献详情", unit="篇", 
+                  disable=False,  # 始终显示进度条
+                  ncols=80,  # 固定宽度
+                  bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]') as progress_bar:
+            
+            # 分批处理ID，提取文献信息
+            while len(publications) < max_results:
+                # 获取未处理的ID
+                remaining_ids = [id for id in id_list if id not in processed_ids]
+                if not remaining_ids:
+                    # 尝试获取更多ID
+                    if len(publications) < max_results:
+                        try:
+                            additional_needed = (max_results - len(publications)) * 2
+                            
+                            # 更新进度显示
+                            try:
+                                from main import ProgressDisplay
+                                ProgressDisplay.set_status(f"已获取 {len(publications)} 篇，获取更多文献...")
+                            except:
+                                pass
+                                
+                            more_ids = self._get_more_ids(full_query, len(id_list), additional_needed, sort_param)
+                            if more_ids:
+                                id_list.extend(more_ids)
+                                remaining_ids = [id for id in more_ids if id not in processed_ids]
+                                
+                                # 更新进度条总数
+                                progress_bar.total = min(len(id_list), max_results)
+                                progress_bar.refresh()
+                            else:
+                                break
+                        except Exception as e:
+                            safe_print(f"获取额外ID时出错: {e}", self.verbose)
                             break
-                    except Exception as e:
-                        safe_print(f"获取额外ID时出错: {e}", self.verbose)
+                    else:
                         break
-                else:
-                    break
-            
-            # 处理一批ID
-            current_batch = remaining_ids[:min(10, len(remaining_ids))]
-            if not current_batch:
-                break
                 
-            processed_ids.update(current_batch)
-            batch_pubs = self._process_article_batch(current_batch)
-            
-            # 过滤无摘要文章并添加到结果
-            for pub in batch_pubs:
-                if pub and pub.get('abstract'):
-                    publications.append(pub)
-                else:
-                    skipped_no_abstract += 1
-                
-                if len(publications) >= max_results:
+                # 处理一批ID
+                current_batch = remaining_ids[:min(10, len(remaining_ids))]
+                if not current_batch:
                     break
-            
-            # 添加延迟，避免请求过于频繁
-            if len(publications) < max_results and remaining_ids[len(current_batch):]:
-                time.sleep(0.5)
+                
+                # 更新进度显示
+                batch_start = len(publications)
+                batch_end = min(batch_start + len(current_batch), max_results)
+                try:
+                    from main import ProgressDisplay
+                    ProgressDisplay.set_status(f"获取文献 {batch_start+1}-{batch_end}/{max_results} 详情")
+                except:
+                    pass
+                
+                processed_ids.update(current_batch)
+                batch_pubs = self._process_article_batch(current_batch)
+                
+                # 过滤无摘要文章并添加到结果
+                for pub in batch_pubs:
+                    if pub and pub.get('abstract'):
+                        publications.append(pub)
+                        progress_bar.update(1)
+                    else:
+                        skipped_no_abstract += 1
+                    
+                    if len(publications) >= max_results:
+                        break
+                
+                # 添加延迟，避免请求过于频繁
+                if len(publications) < max_results and remaining_ids[len(current_batch):]:
+                    time.sleep(0.5)
         
         # 报告结果
         if len(publications) < max_results:
             safe_print(f"警告: 请求了{max_results}篇文献，但只找到{len(publications)}篇有效文献（含摘要）", True)
-            safe_print(f"有{skipped_no_abstract}篇文献因没有摘要被跳过", True)
+            if skipped_no_abstract > 0:
+                safe_print(f"有{skipped_no_abstract}篇文献因没有摘要被跳过", True)
         else:
             if skipped_no_abstract > 0:
                 safe_print(f"已跳过 {skipped_no_abstract} 篇没有摘要的文章", True)
         
         # 第三步: 获取引用次数 (根据配置决定是否获取)
         if self.config.get('get_citations', True):
+            # 更新进度显示
+            try:
+                from main import ProgressDisplay
+                ProgressDisplay.set_status(f"获取 {len(publications)} 篇文献的引用次数...")
+            except:
+                pass
+                
             self._get_citation_counts(publications)
         else:
             safe_print("已禁用引用次数获取", self.verbose)
         
-        safe_print(f"成功获取 {len(publications)} 篇文献信息 (有摘要文章)", True)
+        # 更新进度显示
+        try:
+            from main import ProgressDisplay
+            ProgressDisplay.set_status(f"已完成获取 {len(publications)} 篇文献")
+        except:
+            pass
+            
+        safe_print(f"✓ 查询完成! 成功获取 {len(publications)} 篇文献信息 (有摘要文章)", True)
         return publications
     
     def _get_more_ids(self, query, start, count, sort_param):

@@ -333,35 +333,127 @@ class TtsConverter:
             safe_print(f"读取和处理文件失败: {e}", self.verbose)
             return None
     
-    def _format_by_content_option(self, articles_data, content_options):
-        """根据内容选项格式化文本"""
+    def prepare_pure_text(self, input_file=None, output_file=None):
+        """
+        将JSON结构化数据处理为纯文本，仅包含要转换为语音的内容。
+        
+        Args:
+            input_file: 输入文件路径(JSON结构化数据)，默认为self.config['tts_input']
+            output_file: 输出文件路径(纯文本数据)，默认为'out/pub4tts.txt'
+        
+        Returns:
+            bool: 处理成功返回True，否则返回False
+        """
+        if input_file is None:
+            input_file = self.config.get('tts_input', '')
+        
+        if output_file is None:
+            output_file = "out/pub4tts.txt"
+        
+        if not os.path.exists(input_file):
+            safe_print(f"输入文件不存在: {input_file}", True)
+            return False
+        
+        try:
+            # 读取输入文件
+            with open(input_file, 'r', encoding='utf-8') as f:
+                text = f.read().strip()
+            
+            # 提取JSON数据块
+            articles_data = []
+            data_blocks = re.findall(r'@@DATA_BEGIN@@\n(.*?)\n@@DATA_END@@', text, re.DOTALL)
+            
+            if not data_blocks:
+                safe_print("未找到有效的数据块", True)
+                return False
+            
+            # 解析JSON数据
+            for data_block in data_blocks:
+                try:
+                    article_data = json.loads(data_block)
+                    articles_data.append(article_data)
+                except json.JSONDecodeError:
+                    safe_print("警告: JSON数据解析失败", True)
+                    
+            if not articles_data:
+                safe_print("未找到有效的文章数据", True)
+                return False
+                
+            # 使用选择的内容格式化为纯文本
+            content_setting = self.config.get('tts_content', 'all_zh')
+            content_options = [opt.strip() for opt in content_setting.split(',')]
+            
+            # 生成纯文本内容
+            pure_text = self._format_by_content_option(articles_data, content_options, include_labels=False)
+            
+            # 确保输出目录存在
+            output_dir = os.path.dirname(output_file)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            
+            # 保存到输出文件
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(pure_text)
+            
+            safe_print(f"已成功生成纯文本文件: {output_file}", True)
+            return True
+            
+        except Exception as e:
+            safe_print(f"处理纯文本数据失败: {e}", True)
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _format_by_content_option(self, articles_data, content_options, include_labels=True):
+        """根据内容选项格式化文本
+        
+        Args:
+            articles_data: 文章数据列表
+            content_options: 内容选项列表
+            include_labels: 是否包含标签(如"标题："等)，默认为True
+        """
         formatted_text = ""
         
         for idx, article in enumerate(articles_data):
             article_text = ""
             
             # 如果有多篇文章，添加序号
-            if len(articles_data) > 1:
+            if len(articles_data) > 1 and include_labels:
                 article_text += f"文章 {idx+1}\n\n"
             
             # 处理标准选项
             if 'all_zh' in content_options:
-                article_text += f"标题：{article.get('title_zh', '')}\n\n"
-                article_text += f"关键词：{article.get('keywords_zh', '')}\n\n"
-                article_text += f"摘要：{article.get('abstract_zh', '')}\n\n"
+                if include_labels:
+                    article_text += f"标题：{article.get('title_zh', '')}\n\n"
+                    article_text += f"关键词：{article.get('keywords_zh', '')}\n\n"
+                    article_text += f"摘要：{article.get('abstract_zh', '')}\n\n"
+                else:
+                    article_text += f"{article.get('title_zh', '')}\n\n"
+                    article_text += f"{article.get('keywords_zh', '')}\n\n"
+                    article_text += f"{article.get('abstract_zh', '')}\n\n"
             elif 'all_en' in content_options:
-                article_text += f"标题：{article.get('title_en', '')}\n\n"
-                article_text += f"关键词：{article.get('keywords_en', '')}\n\n"
-                article_text += f"摘要：{article.get('abstract_en', '')}\n\n"
+                if include_labels:
+                    article_text += f"标题：{article.get('title_en', '')}\n\n"
+                    article_text += f"关键词：{article.get('keywords_en', '')}\n\n"
+                    article_text += f"摘要：{article.get('abstract_en', '')}\n\n"
+                else:
+                    article_text += f"{article.get('title_en', '')}\n\n"
+                    article_text += f"{article.get('keywords_en', '')}\n\n"
+                    article_text += f"{article.get('abstract_en', '')}\n\n"
             elif 'mixed' in content_options:
                 # 使用中文，如果中文不存在则使用英文
                 title = article.get('title_zh') or article.get('title_en', '')
                 keywords = article.get('keywords_zh') or article.get('keywords_en', '')
                 abstract = article.get('abstract_zh') or article.get('abstract_en', '')
                 
-                article_text += f"标题：{title}\n\n"
-                article_text += f"关键词：{keywords}\n\n"
-                article_text += f"摘要：{abstract}\n\n"
+                if include_labels:
+                    article_text += f"标题：{title}\n\n"
+                    article_text += f"关键词：{keywords}\n\n"
+                    article_text += f"摘要：{abstract}\n\n"
+                else:
+                    article_text += f"{title}\n\n"
+                    article_text += f"{keywords}\n\n"
+                    article_text += f"{abstract}\n\n"
             else:
                 # 自定义组合处理
                 custom_content_added = False
@@ -413,7 +505,7 @@ class TtsConverter:
             formatted_text += article_text + "\n"
         
         return formatted_text
-
+    
     def process_directory(self):
         """处理目录中的所有文本文件"""
         directory = self.config.get('tts_directory', '')
@@ -442,7 +534,6 @@ class TtsConverter:
                 
                 if self.text_to_speech(text, output_file):
                     success_count += 1
-        
         safe_print(f"目录处理完成，成功转换 {success_count}/{len(text_files)} 个文件", self.verbose)
         return success_count > 0
     
@@ -489,6 +580,9 @@ class TtsConverter:
             safe_print("错误: 未设置API密钥，无法进行语音合成", True)
             return False
         
+        # 先生成纯文本文件
+        self.prepare_pure_text()
+        
         # 重置统计
         self.total_characters = 0
         self.file_count = 0
@@ -518,23 +612,23 @@ class TtsConverter:
             price_per_10k = self.config.get('tts_price', 1.0)
             
             # 考虑免费额度
-            free_chars = 30000  # 每月免费3万字符
-            charged_chars = max(0, self.total_characters - free_chars)
+            # free_chars = 30000  # 每月免费3万字符
+            # charged_chars = max(0, self.total_characters - free_chars)
             
             # 计算假设性收费（如果全部计费）
             full_cost = self.total_characters * (price_per_10k / 10000)
             
-            if charged_chars > 0:
-                # 计算实际费用
-                total_cost = charged_chars * (price_per_10k / 10000)
-                safe_print(f"免费额度: 30,000字符/月", True)
-                safe_print(f"超出免费额度: {charged_chars}字符", True)
-                safe_print(f"估算费用: ¥{total_cost:.2f} (按¥{price_per_10k}/万字符计算)", True)
-                safe_print(f"注意: 每月前3万字符免费，超出部分按¥{price_per_10k}/万字符计费", True)
-            else:
-                safe_print(f"本次使用字符数: {self.total_characters}，在免费额度(30,000字符/月)内", True)
-                safe_print(f"若不考虑免费额度，全部计费金额为: ¥{full_cost:.2f} (按¥{price_per_10k}/万字符计算)", True)
-                safe_print("注意: 免费额度统计以服务提供商的月度结算为准", True)
+            # if charged_chars > 0:
+            #     # 计算实际费用
+            #     total_cost = charged_chars * (price_per_10k / 10000)
+            #     safe_print(f"免费额度: 30,000字符/月", True)
+            #     safe_print(f"超出免费额度: {charged_chars}字符", True)
+            #     safe_print(f"估算费用: ¥{total_cost:.2f} (按¥{price_per_10k}/万字符计算)", True)
+            #     safe_print(f"注意: 每月前3万字符免费，超出部分按¥{price_per_10k}/万字符计费", True)
+            # else:
+            safe_print(f"本次使用字符数: {self.total_characters}，在免费额度(30,000字符/月)内", True)
+            safe_print(f"若不考虑免费额度，全部计费金额为: ¥{full_cost:.2f} (按¥{price_per_10k}/万字符计算)", True)
+            safe_print("注意: 免费额度统计以服务提供商的月度结算为准", True)
         except Exception as e:
             safe_print(f"无法估算费用: {e}", True)
         
