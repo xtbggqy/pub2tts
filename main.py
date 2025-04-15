@@ -46,14 +46,14 @@ def safe_print(msg, always_print=False):
 class ProgressDisplay:
     """进度显示管理器，固定在终端底部"""
     current_step = 0
-    total_steps = 4
-    step_names = ["文献检索", "期刊信息增强", "文献翻译与理解", "文本转语音"]
+    total_steps = 5
+    step_names = ["文献检索", "期刊信息增强", "文献翻译与理解", "生成HTML文献浏览器", "文本转语音"]
     start_time = None
     active = False
     lock = threading.Lock()
     animation_thread = None
     running = False
-    step_status = ["待处理", "待处理", "待处理", "待处理"]
+    step_status = ["待处理", "待处理", "待处理", "待处理", "待处理"]
     last_update = 0  # 上次更新时间
     status_message = ""  # 添加状态信息
     
@@ -214,16 +214,23 @@ class PubMedProcessor:
                 return False
             ProgressDisplay.step_status[2] = "完成"
             
-            # 步骤 4: 文本转语音 (可选择跳过)
+            # 步骤 4: 生成HTML文献浏览器
+            ProgressDisplay.update_step(4)
+            if not self._run_html_generator():
+                ProgressDisplay.step_status[3] = "失败"
+                return False
+            ProgressDisplay.step_status[3] = "完成"
+            
+            # 步骤 5: 文本转语音 (可选择跳过)
             if not skip_tts:
-                ProgressDisplay.update_step(4)
+                ProgressDisplay.update_step(5)
                 if not self._run_tts_conversion():
-                    ProgressDisplay.step_status[3] = "失败"
+                    ProgressDisplay.step_status[4] = "失败"
                     # 继续执行，只将状态标记为失败
-                ProgressDisplay.step_status[3] = "完成" if ProgressDisplay.step_status[3] != "失败" else "失败"
+                ProgressDisplay.step_status[4] = "完成" if ProgressDisplay.step_status[4] != "失败" else "失败"
             else:
-                ProgressDisplay.step_status[3] = "跳过"
-                log("\n=== 步骤 4: 文本转语音 [已跳过] ===", True)
+                ProgressDisplay.step_status[4] = "跳过"
+                log("\n=== 步骤 5: 文本转语音 [已跳过] ===", True)
             
             # 完成所有流程
             self._print_summary()
@@ -304,10 +311,56 @@ class PubMedProcessor:
                 import traceback
                 traceback.print_exc()
             return False
-    
+
+    def _run_html_generator(self):
+        """生成HTML文献浏览器"""
+        log("\n=== 步骤 4: 生成HTML文献浏览器 ===", True)
+        try:
+            # 检查是否需要生成HTML
+            generate_html = _get_config_value(self.config_file, 'generate_html', 'no').lower()
+            if not generate_html in ['yes', 'true', 'y', '1']:
+                log("已跳过HTML浏览器生成 (在配置中未启用)", True)
+                return True
+                
+            # 导入HTML生成器
+            try:
+                from html_viewer import HTMLViewerGenerator
+            except ImportError:
+                error("无法导入HTML浏览器生成器模块，请确保html_viewer.py文件存在")
+                return False
+                
+            # 初始化HTML生成器
+            generator = HTMLViewerGenerator(config_file=self.config_file, verbose=VERBOSE_OUTPUT)
+            
+            # 生成HTML
+            if generator.process():
+                success("HTML文献浏览器生成成功")
+                
+                # 自动打开HTML
+                html_auto_open = _get_config_value(self.config_file, 'html_auto_open', 'yes').lower()
+                if html_auto_open in ['yes', 'true', 'y', '1']:
+                    # 获取HTML文件路径
+                    html_path = generator.config['output_html']
+                    if os.path.exists(html_path):
+                        log(f"自动打开HTML文件: {html_path}", True)
+                        import webbrowser
+                        webbrowser.open('file://' + os.path.abspath(html_path))
+                        
+                return True
+            else:
+                warning("HTML文献浏览器生成失败，但允许流程继续")
+                return True
+                
+        except Exception as e:
+            error(f"生成HTML文献浏览器失败: {e}")
+            if VERBOSE_OUTPUT:
+                import traceback
+                traceback.print_exc()
+            return False
+
     def _run_tts_conversion(self):
         """运行文本转语音"""
-        log("\n=== 步骤 4: 文本转语音 ===", True)
+        log("\n=== 步骤 5: 文本转语音 ===", True)
         try:
             # 初始化TTS转换器
             converter = TtsConverter(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
@@ -378,8 +431,9 @@ class PubMedProcessor:
                 'search': (self._run_pub_search, 1),
                 'enhance': (self._run_journal_enhancement, 2),
                 'translate': (self._run_llm_understand, 3),
-                'tts': (self._run_tts_conversion, 4),
-                'viz': (self._run_journal_visualization, 5)
+                'html': (self._run_html_generator, 4),
+                'tts': (self._run_tts_conversion, 5),
+                'viz': (self._run_journal_visualization, 6)
             }
             
             if step not in steps:
@@ -404,6 +458,29 @@ class PubMedProcessor:
         finally:
             ProgressDisplay.stop()
 
+def _get_config_value(config_file, key, default_value):
+    """从配置文件中获取指定键的值
+    
+    Args:
+        config_file: 配置文件路径
+        key: 键名
+        default_value: 默认值
+        
+    Returns:
+        配置值或默认值
+    """
+    try:
+        with open(config_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    parts = line.split('=', 1)
+                    if len(parts) == 2 and parts[0].strip() == key:
+                        return parts[1].strip().split('#', 1)[0].strip()
+        return default_value
+    except Exception:
+        return default_value
+
 def main():
     """主程序入口"""
     # 添加对Windows终端的特殊处理
@@ -418,7 +495,7 @@ def main():
     parser = argparse.ArgumentParser(description='PubMed文献处理全流程工具')
     # 添加命令行参数
     parser.add_argument('-s', '--steps', nargs='+', 
-                        choices=['search', 'enhance', 'translate', 'tts', 'viz'], 
+                        choices=['search', 'enhance', 'translate', 'html', 'tts', 'viz'], 
                         help='选择要执行的一个或多个步骤，例如: -s search enhance')
     parser.add_argument('-c', '--config', default='pub.txt', 
                         help='配置文件路径(默认: pub.txt)')
@@ -474,8 +551,9 @@ def main():
                 'search': (processor._run_pub_search, 1),
                 'enhance': (processor._run_journal_enhancement, 2),
                 'translate': (processor._run_llm_understand, 3),
-                'tts': (processor._run_tts_conversion, 4),
-                'viz': (processor._run_journal_visualization, 5)
+                'html': (processor._run_html_generator, 4),
+                'tts': (processor._run_tts_conversion, 5),
+                'viz': (processor._run_journal_visualization, 6)
             }
             
             # 按顺序执行选定的步骤
@@ -497,7 +575,7 @@ def main():
                     success(f"步骤 {step} 完成")
         else:
             if args.no_tts:
-                log("执行前三个步骤，跳过语音合成", True)
+                log("执行前四个步骤，跳过语音合成", True)
                 processor.run_full_process(skip_tts=True)
             else:
                 processor.run_full_process()

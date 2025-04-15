@@ -25,7 +25,11 @@ end_date=
 time_period=2.0
 
 # 最大获取结果数量
-max_results=30
+max_results=500
+
+# 高级检索设置 - 批处理大小
+# 大于此值时启用并行处理以提高性能
+parallel_threshold=10
 
 # PubMed需要提供邮箱才能获取信息，正常邮箱即可（已经够用了），如果想速度更快，可到Pubmed官网获取API
 email=test@example.com
@@ -71,10 +75,28 @@ journal_data_path=zoterostyle.json
 article_sort=impact_factor
 
 #===============================
+# 期刊信息增强高级设置
+#===============================
+# 并行处理线程数 (更高的值可能提高速度，但会增加内存使用)
+journal_max_workers=16
+
+# 期刊信息处理批量大小
+journal_batch_size=100
+
+# 是否启用期刊匹配缓存 (提高速度但使用更多内存)
+journal_cache_enabled=yes
+
+# 是否预加载期刊名称相似度数据 (提高速度但延长启动时间)
+journal_preload_similarity=yes
+
+# 期刊名称匹配阈值 (0-1之间，越高匹配越精确但可能漏掉部分期刊)
+journal_match_threshold=0.7
+
+#===============================
 # AI翻译和理解设置
 #===============================
 # 处理的最大文章数
-max_articles=3
+max_articles=500
 
 # AI模型名称
 ai_model=qwen-turbo
@@ -99,6 +121,48 @@ optimize_keywords=no
 api_price_input=0.3
 # 输出token价格
 api_price_output=0.6
+
+#===============================
+# HTML浏览器设置
+#===============================
+# 是否生成HTML浏览器(yes/no)
+generate_html=yes
+
+# HTML页面标题
+html_page_title=文献浏览器
+
+# 每页显示文章数量
+articles_per_page=10
+
+# 是否启用暗色模式(yes/no)
+html_dark_mode=no
+
+# 是否显示英文原文(yes/no)
+html_show_english=yes
+
+# 是否高亮搜索关键词(yes/no)
+html_highlight_keywords=yes
+
+# 是否显示统计图表(yes/no)
+html_show_charts=yes
+
+# 是否在浏览器中自动打开生成的HTML(yes/no)
+html_auto_open=yes
+
+#===============================
+# AI翻译高级设置
+#===============================
+# 批量翻译大小（每个API请求处理的文章数量）
+translation_batch_size=20
+
+# 是否启用并行翻译处理(yes/no)
+parallel_translation=yes
+
+# 并行翻译的最大并发请求数
+max_parallel_requests=20
+
+# 是否使用翻译缓存以提高速度(yes/no)
+use_translation_cache=yes
 
 #===============================
 # 语音合成(TTS)设置
@@ -158,33 +222,21 @@ viz_dpi=300
 # 图表大小(宽,高，单位为英寸)
 viz_figsize=10,6
 
-# 是否显示影响因子趋势(yes/no)
-viz_show_if=yes
+# 是否显示影响因子趋势(yes/no) - 默认关闭
+viz_show_if=no
 
 # 是否显示分区分布(yes/no)
 viz_show_quartile=yes
 
-# 是否显示期刊分布(yes/no)
-viz_show_journals=yes
+# 是否显示期刊分布(yes/no) - 默认关闭
+viz_show_journals=no
 
 # 是否显示发表年份分布(yes/no)
 viz_show_years=yes
 
-# 颜色主题(default, modern, pastel, dark, scientific)
-viz_color_theme=modern
+# 是否显示关键词词云图(yes/no) - 新增选项
+viz_show_wordcloud=yes
 
-# 图表字体大小
-viz_font_size=11
-
-# 图表标题字体大小
-viz_title_size=14
-
-# 图表标签字体大小
-viz_label_size=12
-
-# 网格透明度(0-1)
-viz_grid_alpha=0.3
-
-# 是否启用交互式图表(yes/no)
-viz_interactive=no
+# 词云图最大显示词数 - 新增选项
+viz_wordcloud_max=100
 

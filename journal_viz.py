@@ -11,10 +11,25 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 from collections import Counter, defaultdict
+import random
 
-# 设置matplotlib支持中文
+# 导入词云图所需库
+try:
+    from wordcloud import WordCloud, STOPWORDS
+    WORDCLOUD_AVAILABLE = True
+except ImportError:
+    WORDCLOUD_AVAILABLE = False
+
+# 设置matplotlib支持中文和英文字体
 try:
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'Arial Unicode MS', 'STHeiti', 'sans-serif']
+    plt.rcParams['font.monospace'] = ['Consolas', 'Courier New', 'DejaVu Sans Mono']  # 设置等宽英文字体
+    plt.rcParams['font.family'] = 'sans-serif'  # 默认使用sans-serif族
+    # 设置全局默认英文字体为Consolas
+    matplotlib.rcParams['mathtext.fontset'] = 'custom'
+    matplotlib.rcParams['mathtext.rm'] = 'Consolas'
+    matplotlib.rcParams['mathtext.it'] = 'Consolas:italic'
+    matplotlib.rcParams['mathtext.bf'] = 'Consolas:bold'
     plt.rcParams['axes.unicode_minus'] = False  # 解决保存图像是负号'-'显示为方块的问题
 except:
     pass  # 如果设置失败，继续使用默认字体
@@ -137,10 +152,12 @@ class JournalVisualizer:
             'viz_style': 'ggplot',                     # 图表样式
             'viz_dpi': 300,                            # 图表DPI
             'viz_figsize': '10,6',                     # 图表大小(宽,高)
-            'viz_show_if': True,                       # 是否显示影响因子趋势
+            'viz_show_if': False,                      # 改为默认不显示影响因子趋势
             'viz_show_quartile': True,                 # 是否显示分区分布
-            'viz_show_journals': True,                 # 是否显示期刊分布
+            'viz_show_journals': False,                # 改为默认不显示期刊分布
             'viz_show_years': True,                    # 是否显示发表年份分布
+            'viz_show_wordcloud': True,                # 新增: 是否显示关键词词云图
+            'viz_wordcloud_max': 100,                  # 新增: 词云图最大显示词数
             'viz_color_theme': 'default',              # 颜色主题
             'viz_font_size': 11,                       # 字体大小
             'viz_title_size': 14,                      # 标题字体大小
@@ -148,6 +165,10 @@ class JournalVisualizer:
             'viz_grid_alpha': 0.3,                     # 网格透明度
             'input_sort': 'out/pubmed_enhanced.csv',   # 期刊增强后的输入文件
             'viz_interactive': False,                  # 是否启用交互式图表
+            'time_period': 3.0,                        # 默认时间周期(年)
+            'start_date': '',                          # 开始日期
+            'end_date': '',                            # 结束日期
+            'expected_year_range': 3,                  # 默认预期年份范围
         }
         
         try:
@@ -165,25 +186,47 @@ class JournalVisualizer:
                                 
                                 # 处理布尔值
                                 if key in ['viz_enabled', 'viz_show_if', 'viz_show_quartile', 
-                                           'viz_show_journals', 'viz_show_years', 'viz_interactive']:
+                                           'viz_show_journals', 'viz_show_years', 'viz_show_wordcloud', 'viz_interactive']:
                                     config[key] = value.lower() in ['true', 'yes', 'y', '1']
                                 # 处理数值
-                                elif key in ['viz_dpi', 'viz_font_size', 'viz_title_size', 'viz_label_size']:
+                                elif key in ['viz_dpi', 'viz_font_size', 'viz_title_size', 'viz_label_size', 'viz_wordcloud_max']:
                                     try:
                                         config[key] = int(value)
                                     except ValueError:
                                         safe_print(f"警告: 无效的{key}值: {value}，使用默认值", self.verbose)
-                                elif key == 'viz_grid_alpha':
+                                elif key in ['viz_grid_alpha', 'time_period']:
                                     try:
                                         config[key] = float(value)
                                     except ValueError:
-                                        safe_print(f"警告: 无效的网格透明度值: {value}，使用默认值: 0.3", self.verbose)
+                                        safe_print(f"警告: 无效的{key}值: {value}，使用默认值", self.verbose)
                                 # 处理其他字符串值
                                 elif key in config:
                                     config[key] = value
                                 # 输入文件特殊处理
                                 elif key == 'output_sort':
                                     config['input_sort'] = value
+
+                # 确定预期年份范围
+                # 使用明确的日期范围（如果设置了）
+                if config['start_date'] and config['end_date']:
+                    try:
+                        # 尝试解析日期
+                        start_date = self._parse_config_date(config['start_date'])
+                        end_date = self._parse_config_date(config['end_date'])
+                        if start_date and end_date:
+                            # 计算年份差异
+                            year_diff = end_date.year - start_date.year
+                            # 考虑月份来精确计算
+                            if end_date.month < start_date.month or (end_date.month == start_date.month and end_date.day < start_date.day):
+                                year_diff -= 1
+                            config['expected_year_range'] = max(1, year_diff)
+                            safe_print(f"根据明确日期范围设置预期年份范围: {config['expected_year_range']}年", self.verbose)
+                    except Exception as e:
+                        safe_print(f"解析日期范围出错: {e}", self.verbose)
+                # 使用时间周期（如果没有设置明确日期）
+                elif config['time_period'] > 0:
+                    config['expected_year_range'] = max(1, int(config['time_period'] + 0.5))  # 四舍五入到整数年
+                    safe_print(f"根据时间周期设置预期年份范围: {config['expected_year_range']}年", self.verbose)
                 
                 # 检查是否缺少配置项，如果是，则添加到配置文件
                 self._check_and_update_config(config_file, config)
@@ -197,6 +240,19 @@ class JournalVisualizer:
         
         return config
     
+    def _parse_config_date(self, date_str):
+        """解析配置文件中的日期字符串"""
+        try:
+            # 尝试不同的日期格式
+            for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%Y-%m', '%Y/%m', '%Y']:
+                try:
+                    return datetime.strptime(date_str, fmt)
+                except ValueError:
+                    continue
+            return None
+        except Exception:
+            return None
+
     def _check_and_update_config(self, config_file, config):
         """检查并更新配置文件，添加缺失的配置项"""
         needed_params = {
@@ -206,10 +262,12 @@ class JournalVisualizer:
             'viz_style': '# 图表样式(ggplot, seaborn, classic, dark_background等)\nviz_style=ggplot\n\n',
             'viz_dpi': '# 图表DPI(分辨率)\nviz_dpi=300\n\n',
             'viz_figsize': '# 图表大小(宽,高，单位为英寸)\nviz_figsize=10,6\n\n',
-            'viz_show_if': '# 是否显示影响因子趋势(yes/no)\nviz_show_if=yes\n\n',
+            'viz_show_if': '# 是否显示影响因子趋势(yes/no)\nviz_show_if=no\n\n',
             'viz_show_quartile': '# 是否显示分区分布(yes/no)\nviz_show_quartile=yes\n\n',
-            'viz_show_journals': '# 是否显示期刊分布(yes/no)\nviz_show_journals=yes\n\n',
+            'viz_show_journals': '# 是否显示期刊分布(yes/no)\nviz_show_journals=no\n\n',
             'viz_show_years': '# 是否显示发表年份分布(yes/no)\nviz_show_years=yes\n\n',
+            'viz_show_wordcloud': '# 是否显示关键词词云图(yes/no)\nviz_show_wordcloud=yes\n\n',
+            'viz_wordcloud_max': '# 词云图最大显示词数\nviz_wordcloud_max=100\n\n',
             'viz_color_theme': '# 颜色主题(default, modern, pastel, dark, scientific)\nviz_color_theme=default\n\n',
             'viz_font_size': '# 图表字体大小\nviz_font_size=11\n\n',
             'viz_title_size': '# 图表标题字体大小\nviz_title_size=14\n\n',
@@ -313,29 +371,38 @@ class JournalVisualizer:
             # 生成图表
             chart_files = []
             
-            # 影响因子趋势图
-            if self.config.get('viz_show_if', True):
+            # 影响因子趋势图 - 可选择显示
+            if self.config.get('viz_show_if', False):
                 if_chart = self._create_impact_factor_chart(data)
                 if if_chart:
                     chart_files.append(if_chart)
             
-            # 分区分布图
+            # 分区分布图 - 保留
             if self.config.get('viz_show_quartile', True):
                 quartile_chart = self._create_quartile_chart(data)
                 if quartile_chart:
                     chart_files.append(quartile_chart)
             
-            # 期刊分布图
-            if self.config.get('viz_show_journals', True):
+            # 期刊分布图 - 可选择显示
+            if self.config.get('viz_show_journals', False):
                 journal_chart = self._create_journal_chart(data)
                 if journal_chart:
                     chart_files.append(journal_chart)
             
-            # 发表年份分布图
+            # 发表年份分布图 - 保留
             if self.config.get('viz_show_years', True):
                 year_chart = self._create_year_chart(data)
                 if year_chart:
                     chart_files.append(year_chart)
+            
+            # 新增: 关键词词云图
+            if self.config.get('viz_show_wordcloud', True):
+                if WORDCLOUD_AVAILABLE:
+                    wordcloud_chart = self._create_wordcloud_chart(data)
+                    if wordcloud_chart:
+                        chart_files.append(wordcloud_chart)
+                else:
+                    safe_print("警告: 无法生成词云图，请安装wordcloud库：pip install wordcloud", True)
             
             return chart_files
             
@@ -361,7 +428,9 @@ class JournalVisualizer:
                         'journal': row.get('journal', '').strip(),
                         'impact_factor': self._extract_float(row.get('impact_factor', '0')),
                         'quartile': row.get('quartile', '').strip(),
-                        'pub_date': row.get('pub_date', '').strip()
+                        'pub_date': row.get('pub_date', '').strip(),
+                        'keywords': row.get('keywords', '').strip(),
+                        'translated_keywords': row.get('translated_keywords', '').strip()
                     }
                     data.append(journal_data)
             
@@ -385,6 +454,151 @@ class JournalVisualizer:
         except (ValueError, TypeError):
             return 0.0
     
+    def _create_wordcloud_chart(self, data):
+        """创建关键词词云图
+        
+        Args:
+            data: 文章数据列表
+            
+        Returns:
+            词云图文件路径或None
+        """
+        try:
+            if not WORDCLOUD_AVAILABLE:
+                safe_print("无法创建词云图: 缺少wordcloud库", True)
+                return None
+                
+            # 收集所有关键词
+            all_keywords = []
+            for article in data:
+                # 优先使用翻译后的关键词
+                keywords = article.get('translated_keywords', '') or article.get('keywords', '')
+                if not keywords:
+                    continue
+                
+                # 分割关键词
+                keyword_list = re.split(r'[;,，；]', keywords)
+                for keyword in keyword_list:
+                    # 清理关键词
+                    keyword = keyword.strip()
+                    # 去除一些常见的AI生成标记和括号内容
+                    keyword = re.sub(r'\[AI生成\]|\(.*?\)', '', keyword).strip()
+                    
+                    if len(keyword) > 1:  # 过滤单字符关键词
+                        all_keywords.append(keyword)
+            
+            if not all_keywords or len(all_keywords) < 5:
+                safe_print("警告: 没有足够的关键词可供生成词云图", self.verbose)
+                return None
+            
+            # 统计关键词频率
+            keyword_freq = Counter(all_keywords)
+            
+            safe_print(f"收集到 {len(keyword_freq)} 个不同的关键词用于词云图", self.verbose)
+            if self.verbose:
+                safe_print(f"前10个高频关键词: {keyword_freq.most_common(10)}", self.verbose)
+            
+            # 准备词云图
+            max_words = self.config.get('viz_wordcloud_max', 100)
+            
+            # 获取配色和设置
+            colors = self.COLOR_THEMES[self.theme]
+            background_color = colors['background']
+            text_color = colors['text']
+            figsize = self._parse_figsize(self.config.get('viz_figsize', '10,6'))
+            title_size = self.config.get('viz_title_size', 14)
+            label_size = self.config.get('viz_label_size', 12)
+            
+            # 获取合适的中文字体
+            font_path = self._get_font_path()
+            
+            # 创建词云图对象
+            wordcloud = WordCloud(
+                width=1600, 
+                height=900,
+                background_color=background_color,
+                max_words=max_words,
+                min_font_size=10,
+                max_font_size=160,
+                prefer_horizontal=0.9,
+                scale=2,
+                relative_scaling=0.6,  # 词频和大小的关联度
+                colormap='viridis',    # 默认颜色映射
+                collocations=False,    # 避免显示二元词组
+                regexp=r'\w[\w\s()+-]+',  # 匹配模式
+                normalize_plurals=False,  # 不要规范复数
+                include_numbers=False,    # 不包含数字
+                font_path=font_path,      # 设置字体
+                random_state=42           # 固定随机状态以保持一致性
+            ).generate_from_frequencies(dict(keyword_freq))
+            
+            # 创建图表
+            fig, ax = plt.subplots(figsize=figsize, facecolor=background_color)
+            ax.set_facecolor(background_color)
+            
+            # 显示词云图
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis('off')  # 关闭坐标轴
+            
+            # 设置标题
+            ax.set_title('文献关键词云图', fontsize=title_size, fontweight='bold', color=text_color, pad=20)
+            
+            # 添加注释
+            plt.figtext(
+                0.5, 0.02,
+                f"基于{len(data)}篇文献，共{len(keyword_freq)}个独立关键词，显示频率最高的{max_words}个",
+                ha='center',
+                fontsize=label_size-2,
+                color=text_color,
+                alpha=0.8
+            )
+            
+            # 保存图表
+            output_file = os.path.join(self.viz_output_dir, 
+                                      f"keywords_wordcloud.{self.config.get('viz_format', 'png')}")
+            plt.savefig(output_file, dpi=self.config.get('viz_dpi', 300), bbox_inches='tight')
+            plt.close()
+            
+            safe_print(f"成功生成关键词词云图: {output_file}", self.verbose)
+            return output_file
+            
+        except Exception as e:
+            safe_print(f"生成关键词词云图失败: {e}", self.verbose)
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _get_font_path(self):
+        """获取合适的中文字体路径"""
+        # 尝试常见的中文字体路径
+        font_paths = [
+            # Windows路径
+            "C:/Windows/Fonts/simhei.ttf",  # 黑体
+            "C:/Windows/Fonts/simsun.ttc",   # 宋体
+            "C:/Windows/Fonts/msyh.ttc",     # 微软雅黑
+            
+            # Mac路径
+            "/System/Library/Fonts/PingFang.ttc",
+            "/Library/Fonts/Arial Unicode.ttf",
+            
+            # Linux路径
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+            
+            # 项目内部路径 (如果有自带字体)
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts/simhei.ttf")
+        ]
+        
+        # 检查字体文件是否存在
+        for path in font_paths:
+            if os.path.exists(path):
+                safe_print(f"使用字体: {path}", self.verbose)
+                return path
+        
+        # 如果找不到合适的中文字体，显示警告
+        safe_print("警告: 找不到合适的中文字体，词云图可能无法正确显示中文字符", self.verbose)
+        return None
+
     def _create_impact_factor_chart(self, data):
         """创建影响因子趋势图"""
         try:
@@ -511,7 +725,7 @@ class JournalVisualizer:
         except Exception as e:
             safe_print(f"生成影响因子趋势图出错: {e}", self.verbose)
             return None
-    
+
     def _create_quartile_chart(self, data):
         """创建分区分布图"""
         try:
@@ -643,39 +857,43 @@ class JournalVisualizer:
         except Exception as e:
             safe_print(f"生成分区分布图出错: {e}", self.verbose)
             return None
-    
+            
     def _create_journal_chart(self, data):
         """创建期刊分布图"""
         try:
-            # 统计期刊出现次数
-            journal_counts = Counter([item['journal'] for item in data if item['journal']])
+            # 统计各期刊的文章数量
+            journal_counts = Counter()
+            for item in data:
+                journal = item.get('journal', '')
+                if journal:
+                    journal_counts[journal] += 1
             
-            # 如果数据过多，只保留前10个
-            if len(journal_counts) > 10:
-                # 获取出现频率最高的10个期刊
-                top_journals = journal_counts.most_common(10)
-                journal_names = [j[0] for j in top_journals]
-                journal_counts = [j[1] for j in top_journals]
-            else:
-                # 直接使用所有数据，并按频率排序
-                top_journals = journal_counts.most_common()
-                journal_names = [j[0] for j in top_journals]
-                journal_counts = [j[1] for j in top_journals]
-            
-            # 如果没有有效数据，返回None
-            if not journal_names:
+            # 如果没有期刊数据，返回None
+            if not journal_counts:
                 safe_print("警告: 没有有效的期刊数据可供可视化", self.verbose)
                 return None
             
-            # 处理过长的期刊名称
-            shortened_names = []
-            for name in journal_names:
-                if len(name) > 25:  # 如果期刊名称太长，截断并添加省略号
-                    shortened_names.append(name[:22] + '...')
-                else:
-                    shortened_names.append(name)
+            # 获取前10个期刊
+            top_journals = journal_counts.most_common(10)
             
-            # 获取设置
+            # 如果少于3个期刊，可能不值得绘图
+            if len(top_journals) < 3:
+                safe_print("警告: 期刊数量过少，不创建期刊分布图", self.verbose)
+                return None
+            
+            # 准备绘图数据
+            journals = [item[0] for item in top_journals]
+            counts = [item[1] for item in top_journals]
+            
+            # 如果期刊名称过长，做一些缩略处理
+            shortened_journals = []
+            for j in journals:
+                if len(j) > 40:
+                    shortened_journals.append(j[:37] + "...")
+                else:
+                    shortened_journals.append(j)
+            
+            # 获取配色和设置
             colors = self.COLOR_THEMES[self.theme]['journal']
             figsize = self._parse_figsize(self.config.get('viz_figsize', '10,6'))
             title_size = self.config.get('viz_title_size', 14)
@@ -687,97 +905,59 @@ class JournalVisualizer:
             # 应用颜色主题和样式
             self._setup_figure_style(ax)
             
-            # 创建水平条形图
-            bars = ax.barh(
-                range(len(shortened_names)), 
-                journal_counts, 
-                color=[colors[i % len(colors)] for i in range(len(journal_counts))],
-                alpha=0.8,
-                height=0.6  # 稍微窄一点的条形，看起来更精致
-            )
+            # 绘制条形图
+            bars = ax.barh(shortened_journals, counts, color=colors[:len(top_journals)], alpha=0.8)
             
-            # 设置渐变色条形图
+            # 在每个条形图上添加数值
             for i, bar in enumerate(bars):
-                # 使用循环的颜色
-                color_index = i % len(colors)
-                
-                # 添加渐变填充
-                grad = matplotlib.colors.LinearSegmentedColormap.from_list(
-                    f"grad{i}", 
-                    [matplotlib.colors.to_rgba(colors[color_index], 0.7), 
-                     matplotlib.colors.to_rgba(colors[color_index], 1.0)]
-                )
-                
-                # 获取条形的位置和大小
-                x, y = bar.get_xy()
-                w, h = bar.get_width(), bar.get_height()
-                
-                # 在每个条形上添加数值
+                width = bar.get_width()
                 ax.text(
-                    w + 0.1,                # 略微偏离条形图右侧
-                    y + h/2,                # 垂直居中
-                    str(int(w)),            # 显示整数值
+                    width + 0.5, 
+                    bar.get_y() + bar.get_height()/2,
+                    str(width),
+                    ha='left', 
                     va='center',
-                    ha='left',
-                    fontsize=label_size,
+                    fontsize=label_size-1,
+                    color=self.COLOR_THEMES[self.theme]['text'],
                     fontweight='bold',
-                    color=self.COLOR_THEMES[self.theme]['text']
+                    bbox=dict(
+                        boxstyle="round,pad=0.3",
+                        fc=self.COLOR_THEMES[self.theme]['background'],
+                        ec=self.COLOR_THEMES[self.theme]['grid'],
+                        alpha=0.7
+                    )
                 )
-                
-                # 使用渐变色填充条形图
-                ax.imshow(
-                    np.array([[0, 1]]), 
-                    cmap=grad, 
-                    aspect='auto',
-                    extent=[x, x+w, y, y+h],
-                    alpha=0.8
-                )
-            
-            # 设置y轴标签
-            ax.set_yticks(range(len(shortened_names)))
-            ax.set_yticklabels(shortened_names)
-            
-            # 为期刊名称与原名称不同时添加工具提示（仅在启用交互式时有效）
-            if self.config.get('viz_interactive', False):
-                for i, (short_name, full_name) in enumerate(zip(shortened_names, journal_names)):
-                    if short_name != full_name:
-                        # 使用annotate创建工具提示
-                        ax.annotate(
-                            full_name,
-                            xy=(0, i),
-                            xytext=(10, 0),
-                            textcoords="offset points",
-                            bbox=dict(boxstyle="round,pad=0.3", fc="yellow", alpha=0.8),
-                            arrowprops=dict(arrowstyle="->"),
-                            visible=False
-                        )
             
             # 设置标题和标签
-            ax.set_title('期刊分布', fontsize=title_size, fontweight='bold', pad=20)
+            ax.set_title('发文期刊分布 (前10名)', fontsize=title_size, fontweight='bold', pad=20)
             ax.set_xlabel('文章数量', fontsize=label_size, fontweight='bold')
             ax.set_ylabel('期刊名称', fontsize=label_size, fontweight='bold')
             
-            # 删除上边框和右边框
+            # 设置y轴标签格式
+            plt.yticks(fontsize=max(8, label_size-2))  # 调整期刊名称的字体大小
+            
+            # 设置x轴从0开始
+            ax.set_xlim(left=0)
+            
+            # 移除上边框和右边框
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
             
-            # 只保留x轴网格线
-            ax.xaxis.grid(True)
-            ax.yaxis.grid(False)
+            # 添加网格线
+            ax.grid(True, linestyle='--', alpha=self.config.get('viz_grid_alpha', 0.3), axis='x')
             
             # 在图表底部添加注释
-            total_journals = len(set([item['journal'] for item in data if item['journal']]))
             plt.figtext(
                 0.5, 0.01, 
-                f"基于{len(data)}篇文献, 共{total_journals}种期刊, 显示频率最高的{len(journal_names)}种",
+                f"基于{len(data)}篇文献，显示发文量前{len(top_journals)}的期刊",
                 ha='center', 
                 fontsize=label_size-2,
                 color=self.COLOR_THEMES[self.theme]['text'],
                 alpha=0.7
             )
             
-            # 调整布局
-            plt.tight_layout(pad=1.5)
+            # 调整布局，考虑期刊名称长度
+            plt.tight_layout(rect=[0, 0.03, 1, 0.97], pad=1.5)
             
             # 保存图表
             output_file = os.path.join(self.viz_output_dir, 
@@ -790,31 +970,144 @@ class JournalVisualizer:
         except Exception as e:
             safe_print(f"生成期刊分布图出错: {e}", self.verbose)
             return None
-    
+
     def _create_year_chart(self, data):
         """创建发表年份分布图"""
         try:
-            # 从发表日期中提取年份
-            years = []
+            # 从发表日期中提取年份和月份
+            date_data = []
             for item in data:
                 pub_date = item.get('pub_date', '')
                 if pub_date:
-                    # 尝试提取年份
+                    # 尝试提取年份和月份
                     year_match = re.search(r'(\d{4})', pub_date)
+                    month_match = re.search(r'(\d{4})[-/\s](\d{1,2})', pub_date)
+                    
                     if year_match:
-                        years.append(int(year_match.group(1)))
+                        year = int(year_match.group(1))
+                        # 如果找到月份，则包含月份信息；否则默认为1月
+                        month = int(month_match.group(2)) if month_match else 1
+                        
+                        # 存储年份-月份组合
+                        date_data.append((year, month))
             
-            # 如果没有年份数据，返回None
-            if not years:
-                safe_print("警告: 没有有效的发表年份数据可供可视化", self.verbose)
+            # 如果没有日期数据，返回None
+            if not date_data:
+                safe_print("警告: 没有有效的发表日期数据可供可视化", self.verbose)
                 return None
             
-            # 统计每年的文章数量
-            year_counts = Counter(years)
+            # 计算跨度起始和结束日期
+            min_date = min(date_data)
+            max_date = max(date_data)
             
-            # 按年份排序
-            sorted_years = sorted(year_counts.keys())
-            article_counts = [year_counts[year] for year in sorted_years]
+            # 按年月对数据进行聚合和排序
+            date_counts = Counter(date_data)
+            sorted_dates = sorted(date_counts.keys())
+            
+            # 调试输出提取的年份-月份数据
+            date_strs = [f"{y}-{m:02d}" for y, m in sorted_dates]
+            safe_print(f"提取到的发表日期: {date_strs}", self.verbose)
+            
+            # 检查日期范围是否符合预期
+            if len(sorted_dates) > 0:
+                # 计算月份跨度
+                start_year, start_month = min_date
+                end_year, end_month = max_date
+                total_months = (end_year - start_year) * 12 + (end_month - start_month) + 1
+                
+                # 将预期年份范围转换为月份
+                expected_range = self.config.get('expected_year_range', 3)
+                expected_months = expected_range * 12
+                
+                # 显示预期范围信息
+                safe_print(f"预期的时间跨度: {expected_range}年 ({expected_months}个月)，实际检索到的跨度: {total_months}个月", self.verbose)
+                
+                # 获取当前日期
+                current_date = datetime.now()
+                current_year = current_date.year
+                current_month = current_date.month
+                
+                # 如果日期范围超过预期，需要过滤
+                if total_months > expected_months:
+                    safe_print(f"提取到的时间跨度({total_months}个月)超过了预期的{expected_months}个月，将进行过滤", self.verbose)
+                    
+                    # 找出需要保留的日期（最近的expected_months个月）
+                    cutoff_year = current_year
+                    cutoff_month = current_month - expected_months
+                    
+                    # 调整可能为负的月份
+                    while cutoff_month <= 0:
+                        cutoff_year -= 1
+                        cutoff_month += 12
+                    
+                    # 过滤日期
+                    dates_to_keep = [(year, month) for year, month in sorted_dates 
+                                    if year > cutoff_year or (year == cutoff_year and month >= cutoff_month)]
+                    
+                    # 如果找不到足够的日期，则保留最近的几个月
+                    if len(dates_to_keep) < expected_months:
+                        # 按从新到旧排序
+                        all_dates_desc = sorted(sorted_dates, reverse=True)
+                        # 保留最近的expected_months个月
+                        dates_to_keep = all_dates_desc[:expected_months]
+                    
+                    # 找出需要过滤的日期
+                    dates_to_filter = [date for date in sorted_dates if date not in dates_to_keep]
+                    
+                    if dates_to_filter:
+                        date_filter_strs = [f"{y}-{m:02d}" for y, m in dates_to_filter]
+                        safe_print(f"过滤超出预期范围的日期: {date_filter_strs}", self.verbose)
+                        
+                        # 过滤日期
+                        for date in dates_to_filter:
+                            if date in date_counts:
+                                date_counts.pop(date)
+                        
+                        # 重新计算排序后的日期
+                        sorted_dates = sorted(date_counts.keys())
+                
+                # 检测日期序列中的间隙
+                if len(sorted_dates) >= 2:
+                    # 生成预期的完整年月序列
+                    expected_dates = []
+                    start_year, start_month = sorted_dates[0]
+                    end_year, end_month = sorted_dates[-1]
+                    
+                    current_year, current_month = start_year, start_month
+                    while (current_year, current_month) <= (end_year, end_month):
+                        expected_dates.append((current_year, current_month))
+                        
+                        # 递增月份
+                        current_month += 1
+                        if current_month > 12:
+                            current_month = 1
+                            current_year += 1
+                    
+                    # 找出缺失的年月
+                    missing_dates = [date for date in expected_dates if date not in sorted_dates]
+                    
+                    # 如果有间隙，添加对应的年月并设置其文章数量为0
+                    if missing_dates:
+                        missing_date_strs = [f"{y}-{m:02d}" for y, m in missing_dates]
+                        safe_print(f"发现日期间隙: {missing_date_strs}，将在图表中显示为零值", self.verbose)
+                        
+                        for date in missing_dates:
+                            date_counts[date] = 0
+                        
+                        # 重新计算排序后的日期
+                        sorted_dates = sorted(date_counts.keys())
+            
+            # 准备绘图数据，确保按日期排序
+            article_counts = [date_counts[date] for date in sorted_dates]
+            
+            # 创建X轴标签
+            date_labels = []
+            for year, month in sorted_dates:
+                # 如果是每年的1月或间隔太大，则显示年月，否则只显示月
+                if month == 1 or len(sorted_dates) < 12:
+                    date_labels.append(f"{year}-{month:02d}")
+                else:
+                    date_labels.append(f"{month:02d}")
             
             # 获取设置
             colors = self.COLOR_THEMES[self.theme]['year']
@@ -828,35 +1121,29 @@ class JournalVisualizer:
             # 应用颜色主题和样式
             self._setup_figure_style(ax)
             
-            # 创建线性渐变色
-            color1 = colors[0]
-            color2 = colors[1]
-            num_years = len(sorted_years)
-            color_list = [matplotlib.colors.to_rgba(color1, 0.8)]
-            
-            # 创建平滑曲线
-            x_smooth = np.linspace(min(sorted_years), max(sorted_years), 100)
-            
             # 如果只有一个数据点，简单显示
-            if len(sorted_years) == 1:
+            if len(sorted_dates) == 1:
+                year, month = sorted_dates[0]
+                date_label = f"{year}-{month:02d}"
+                
                 # 绘制单点
-                ax.plot(sorted_years, article_counts, 'o', color=color1, markersize=10)
-                ax.text(sorted_years[0], article_counts[0] + 0.2, str(article_counts[0]), 
+                ax.bar([date_label], article_counts, color=colors[0], alpha=0.8)
+                ax.text(date_label, article_counts[0] + 0.2, str(article_counts[0]), 
                         ha='center', va='bottom', fontweight='bold')
             else:
                 # 使用色彩渐变区域图
                 ax.fill_between(
-                    sorted_years, 
+                    range(len(sorted_dates)), 
                     article_counts,
-                    color=color2,
+                    color=colors[1],
                     alpha=0.2
                 )
                 
                 # 绘制折线图，使用渐变色
-                for i in range(len(sorted_years)-1):
+                for i in range(len(sorted_dates)-1):
                     seg_color = colors[i % len(colors)]
                     plt.plot(
-                        [sorted_years[i], sorted_years[i+1]],
+                        [i, i+1],
                         [article_counts[i], article_counts[i+1]],
                         '-', 
                         color=seg_color, 
@@ -864,10 +1151,10 @@ class JournalVisualizer:
                     )
                 
                 # 添加数据点
-                for i in range(len(sorted_years)):
+                for i in range(len(sorted_dates)):
                     marker_color = colors[i % len(colors)]
                     ax.plot(
-                        sorted_years[i], 
+                        i, 
                         article_counts[i], 
                         'o', 
                         color=marker_color,
@@ -877,38 +1164,41 @@ class JournalVisualizer:
                     )
                 
                 # 在每个点上方添加数值
-                for i, (x, y) in enumerate(zip(sorted_years, article_counts)):
-                    ax.annotate(
-                        str(y),
-                        xy=(x, y),
-                        xytext=(0, 10),
-                        textcoords="offset points",
-                        ha='center',
-                        va='bottom',
-                        fontsize=label_size,
-                        fontweight='bold',
-                        bbox=dict(
-                            boxstyle="round,pad=0.3",
-                            fc=self.COLOR_THEMES[self.theme]['background'],
-                            ec=self.COLOR_THEMES[self.theme]['grid'],
-                            alpha=0.7
+                for i, count in enumerate(article_counts):
+                    if count > 0:  # 只为数量大于0的点添加标签
+                        ax.annotate(
+                            str(count),
+                            xy=(i, count),
+                            xytext=(0, 10),
+                            textcoords="offset points",
+                            ha='center',
+                            va='bottom',
+                            fontsize=label_size,
+                            fontweight='bold',
+                            bbox=dict(
+                                boxstyle="round,pad=0.3",
+                                fc=self.COLOR_THEMES[self.theme]['background'],
+                                ec=self.COLOR_THEMES[self.theme]['grid'],
+                                alpha=0.7
+                            )
                         )
-                    )
             
             # 设置标题和标签
-            ax.set_title('文章发表年份分布', fontsize=title_size, fontweight='bold', pad=20)
-            ax.set_xlabel('年份', fontsize=label_size, fontweight='bold')
+            time_period = self.config.get('time_period', 0)
+            title_suffix = f"(检索范围: {self.config.get('expected_year_range')}年)" if time_period > 0 else ""
+            ax.set_title(f'文章发表时间分布{title_suffix}', fontsize=title_size, fontweight='bold', pad=20)
+            ax.set_xlabel('发表日期', fontsize=label_size, fontweight='bold')
             ax.set_ylabel('文章数量', fontsize=label_size, fontweight='bold')
             
             # 设置x轴刻度
-            ax.set_xticks(sorted_years)
-            ax.set_xticklabels([str(y) for y in sorted_years], rotation=45)
+            ax.set_xticks(range(len(date_labels)))
+            ax.set_xticklabels(date_labels, rotation=45)
             
             # 确保y轴从0开始
             ax.set_ylim(bottom=0)
             
             # 让y轴有一点额外空间，避免注释被截断
-            y_max = max(article_counts)
+            y_max = max(article_counts) if article_counts else 0
             ax.set_ylim(top=y_max * 1.2)
             
             # 添加网格线
@@ -919,9 +1209,14 @@ class JournalVisualizer:
             ax.spines['right'].set_visible(False)
             
             # 在图表底部添加注释
+            start_year, start_month = min(sorted_dates)
+            end_year, end_month = max(sorted_dates)
+            start_date_str = f"{start_year}-{start_month:02d}"
+            end_date_str = f"{end_year}-{end_month:02d}"
+            
             plt.figtext(
                 0.5, 0.01, 
-                f"基于{len(data)}篇文献，跨度{max(sorted_years)-min(sorted_years)}年 ({min(sorted_years)}-{max(sorted_years)})",
+                f"基于{len(data)}篇文献，时间跨度: {start_date_str} 至 {end_date_str}",
                 ha='center', 
                 fontsize=label_size-2,
                 color=self.COLOR_THEMES[self.theme]['text'],
@@ -941,6 +1236,8 @@ class JournalVisualizer:
             return output_file
         except Exception as e:
             safe_print(f"生成发表年份分布图出错: {e}", self.verbose)
+            import traceback
+            traceback.print_exc()
             return None
 
 def main():

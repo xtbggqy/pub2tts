@@ -6,13 +6,17 @@ import os
 import csv
 import sys
 import time
+import threading
+import concurrent.futures
 from Bio import Entrez
 from tqdm import tqdm
+import random
 
 # 导入自定义模块
 from pubmed_core import (
     safe_print, retry_function, validate_search_query, 
-    build_date_filter, get_entrez_sort_param, remove_html_tags, extract_publication_date
+    build_date_filter, get_entrez_sort_param, remove_html_tags, 
+    extract_publication_date, safe_create_dir
 )
 from search_enhancer import SearchEnhancer
 
@@ -274,13 +278,28 @@ class PubMedFetcher:
         return self._fetch_single_query()
     
     def _fetch_single_query(self):
-        """获取单个查询的PubMed文献"""
+        """运行单个查询的PubMed文献"""
         original_query = self.config['query']
         time_period = self.config['time_period']
         start_date = self.config.get('start_date', '')
         end_date = self.config.get('end_date', '')
         max_results = self.config['max_results']
         sort_type = self.config.get('pubmed_sort', 'best_match')
+        
+        # 为了应对过滤后数量不足的情况，获取更多的初始文献
+        # 增加批处理大小，确保有足够的文献供过滤和重复检查
+        initial_fetch_multiplier = 2.0  # 增加倍数，为大批量处理做准备
+        initial_fetch_amount = min(int(max_results * initial_fetch_multiplier), max_results + 200)
+        
+        # 确保 initial_fetch_amount 是正整数
+        initial_fetch_amount = max(1, initial_fetch_amount)
+        
+        # 对大批量检索特殊处理
+        if max_results >= 300:
+            safe_print(f"检测到大批量检索需求: {max_results}篇文献，采用超高效检索策略", True)
+            # 确保初始获取量始终是有效的正整数
+            initial_fetch_amount = min(600, max(1, int(max_results * 1.5)))  # 增加初始获取数量
+            safe_print(f"初始获取量设置为: {initial_fetch_amount}篇", self.verbose)
         
         # 如果启用了搜索词润色，先润色搜索词
         query = original_query
@@ -305,6 +324,7 @@ class PubMedFetcher:
         
         safe_print(f"执行PubMed高级搜索: {full_query}", True)  # 改为始终显示
         safe_print(f"排序方式: {sort_type}", self.verbose)
+        safe_print(f"请求文献数量: {max_results}，初始获取: {initial_fetch_amount} (考虑过滤后可能减少)", self.verbose)
         
         # 检查查询语法和设置排序
         validate_search_query(full_query, self.verbose)
@@ -322,10 +342,13 @@ class PubMedFetcher:
             safe_print("正在查询PubMed索引数据库...", True)
             
             def _esearch():
-                handle = Entrez.esearch(db="pubmed", term=full_query, retmax=max_results, sort=sort_param)
+                # 确保retmax参数为正整数
+                retmax = max(1, int(initial_fetch_amount))
+                safe_print(f"发送请求，retmax={retmax}", self.verbose)
+                handle = Entrez.esearch(db="pubmed", term=full_query, retmax=retmax, sort=sort_param)
                 return Entrez.read(handle)
             
-            search_results = retry_function(_esearch)
+            search_results = retry_function(_esearch, max_retries=5, delay=2)  # 增加重试次数和延迟
             id_list = search_results.get("IdList", [])
             
             if not id_list:
@@ -333,7 +356,7 @@ class PubMedFetcher:
                 return []
             
             total_count = int(search_results.get("Count", 0))
-            safe_print(f"✓ 检索完成! 共找到 {total_count} 篇相关文献，将获取前 {len(id_list)} 篇详情", True)
+            safe_print(f"✓ 检索完成! 共找到 {total_count} 篇相关文献，初始获取 {len(id_list)} 篇详情", True)
             
             # 更新进度显示
             try:
@@ -346,10 +369,10 @@ class PubMedFetcher:
             safe_print(f"搜索过程出错: {e}", True)
             return []
         
-        # 第二步: 获取文献详细信息
         publications = []
         skipped_no_abstract = 0
         processed_ids = set()
+        duplicate_pmids = set()  # 跟踪重复的PMID
         
         # 创建一个进度条
         with tqdm(total=min(len(id_list), max_results), desc="获取文献详情", unit="篇", 
@@ -358,6 +381,9 @@ class PubMedFetcher:
                   bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]') as progress_bar:
             
             # 分批处理ID，提取文献信息
+            batch_size = 300  # 大幅增加每批处理ID数量至300
+            safe_print(f"设置超大批量处理: 每批{batch_size}篇文献", self.verbose)
+            
             while len(publications) < max_results:
                 # 获取未处理的ID
                 remaining_ids = [id for id in id_list if id not in processed_ids]
@@ -365,24 +391,35 @@ class PubMedFetcher:
                     # 尝试获取更多ID
                     if len(publications) < max_results:
                         try:
-                            additional_needed = (max_results - len(publications)) * 2
+                            # 调整获取更多ID的量，基于当前已获取的有效文献比例
+                            valid_ratio = len(publications) / max(1, len(processed_ids))
+                            # 一次性获取更多ID，大幅减少API调用次数
+                            additional_needed = min(1000, int((max_results - len(publications)) / valid_ratio * 2.5))
+                            
+                            safe_print(f"当前有效文献比例: {valid_ratio:.2f}, 将获取额外 {additional_needed} 篇", self.verbose)
                             
                             # 更新进度显示
                             try:
                                 from main import ProgressDisplay
-                                ProgressDisplay.set_status(f"已获取 {len(publications)} 篇，获取更多文献...")
+                                ProgressDisplay.set_status(f"已获取 {len(publications)} 篇有效文献，获取更多...")
                             except:
                                 pass
                                 
                             more_ids = self._get_more_ids(full_query, len(id_list), additional_needed, sort_param)
                             if more_ids:
-                                id_list.extend(more_ids)
-                                remaining_ids = [id for id in more_ids if id not in processed_ids]
+                                # 去除已处理过的ID
+                                new_ids = [id for id in more_ids if id not in processed_ids]
+                                id_list.extend(new_ids)
                                 
                                 # 更新进度条总数
-                                progress_bar.total = min(len(id_list), max_results)
-                                progress_bar.refresh()
+                                new_total = min(len(id_list), max_results)
+                                if new_total > progress_bar.total:
+                                    progress_bar.total = new_total
+                                    progress_bar.refresh()
+                                
+                                safe_print(f"成功获取 {len(new_ids)} 个新的文献ID", self.verbose)
                             else:
+                                safe_print("无法获取更多文献ID，已达到检索结果上限", self.verbose)
                                 break
                         except Exception as e:
                             safe_print(f"获取额外ID时出错: {e}", self.verbose)
@@ -390,8 +427,8 @@ class PubMedFetcher:
                     else:
                         break
                 
-                # 处理一批ID
-                current_batch = remaining_ids[:min(10, len(remaining_ids))]
+                # 处理一批ID (使用更大的批处理大小300)
+                current_batch = remaining_ids[:min(batch_size, len(remaining_ids))]
                 if not current_batch:
                     break
                 
@@ -400,36 +437,59 @@ class PubMedFetcher:
                 batch_end = min(batch_start + len(current_batch), max_results)
                 try:
                     from main import ProgressDisplay
-                    ProgressDisplay.set_status(f"获取文献 {batch_start+1}-{batch_end}/{max_results} 详情")
+                    ProgressDisplay.set_status(f"批量获取 {batch_start+1}-{batch_end}/{max_results} 详情 (批量:{len(current_batch)}篇)")
                 except:
                     pass
                 
+                safe_print(f"开始超大批量处理 {len(current_batch)} 篇文献", self.verbose)
                 processed_ids.update(current_batch)
-                batch_pubs = self._process_article_batch(current_batch)
                 
-                # 过滤无摘要文章并添加到结果
+                # 无论批量大小如何，都使用并行处理来提高效率
+                batch_pubs = self._process_article_batch_parallel(current_batch, max_workers=8)  # 增加工作线程数
+                
+                # 过滤无摘要文章并检查重复
                 for pub in batch_pubs:
-                    if pub and pub.get('abstract'):
-                        publications.append(pub)
-                        progress_bar.update(1)
-                    else:
-                        skipped_no_abstract += 1
+                    if not pub:  # 跳过处理失败的文献
+                        continue
+                        
+                    pmid = pub.get('pmid', '')
                     
+                    # 检查是否已存在这个PMID (重复检查)
+                    if pmid in duplicate_pmids:
+                        continue
+                    
+                    # 修改: 放宽摘要检查条件，允许短摘要通过
+                    abstract = pub.get('abstract', '')
+                    if not isinstance(abstract, str) or len(abstract.strip()) < 5:  # 允许至少5个字符的摘要通过
+                        skipped_no_abstract += 1
+                        safe_print(f"PMID {pmid} 被过滤: 摘要缺失或过短 ('{abstract}')", self.verbose)
+                        continue
+                    
+                    # 标记为已处理并添加到结果
+                    duplicate_pmids.add(pmid)
+                    publications.append(pub)
+                    progress_bar.update(1)
+                    
+                    # 达到所需数量后停止
                     if len(publications) >= max_results:
                         break
                 
-                # 添加延迟，避免请求过于频繁
+                # 添加极小延迟，避免请求过于频繁
                 if len(publications) < max_results and remaining_ids[len(current_batch):]:
-                    time.sleep(0.5)
+                    time.sleep(0.1)  # 减少延迟时间以提高吞吐量
         
-        # 报告结果
-        if len(publications) < max_results:
-            safe_print(f"警告: 请求了{max_results}篇文献，但只找到{len(publications)}篇有效文献（含摘要）", True)
-            if skipped_no_abstract > 0:
-                safe_print(f"有{skipped_no_abstract}篇文献因没有摘要被跳过", True)
-        else:
-            if skipped_no_abstract > 0:
-                safe_print(f"已跳过 {skipped_no_abstract} 篇没有摘要的文章", True)
+        # 报告过滤结果
+        total_processed = len(processed_ids)
+        final_count = len(publications)
+        safe_print(f"\n获取文献详情结果:", True)
+        safe_print(f"- 请求文献数量: {max_results} 篇", True)
+        safe_print(f"- 处理文献总数: {total_processed} 篇", True)
+        safe_print(f"- 无摘要被过滤: {skipped_no_abstract} 篇", True)
+        safe_print(f"- 获取有效文献: {final_count} 篇", True)
+        
+        if final_count < max_results:
+            shortage = max_results - final_count
+            safe_print(f"注意: 最终获取的有效文献比请求少 {shortage} 篇，这是正常的过滤结果", True)
         
         # 第三步: 获取引用次数 (根据配置决定是否获取)
         if self.config.get('get_citations', True):
@@ -440,7 +500,11 @@ class PubMedFetcher:
             except:
                 pass
                 
-            self._get_citation_counts(publications)
+            # 对于大量文献的情况，使用并行处理获取引用
+            if max_results >= 300:
+                self._get_citation_counts_parallel(publications)
+            else:
+                self._get_citation_counts(publications)
         else:
             safe_print("已禁用引用次数获取", self.verbose)
         
@@ -451,40 +515,173 @@ class PubMedFetcher:
         except:
             pass
             
-        safe_print(f"✓ 查询完成! 成功获取 {len(publications)} 篇文献信息 (有摘要文章)", True)
+        safe_print(f"✓ 查询完成! 成功获取 {len(publications)} 篇有效文献 (含摘要，无重复)", True)
         return publications
     
-    def _get_more_ids(self, query, start, count, sort_param):
-        """获取更多文献ID"""
-        safe_print(f"尝试获取额外 {count} 个文献ID (从位置 {start} 开始)", self.verbose)
-        def _esearch_more():
-            handle = Entrez.esearch(db="pubmed", term=query, retmax=count, 
-                                   retstart=start, sort=sort_param)
-            return Entrez.read(handle)
+    def _get_more_ids(self, query, start_position, retmax, sort_param):
+        """获取更多文献ID，用于分批获取大量文献
         
-        more_results = retry_function(_esearch_more)
-        more_ids = more_results.get("IdList", [])
-        
-        if more_ids:
-            safe_print(f"获取到额外 {len(more_ids)} 个文献ID", self.verbose)
-        else:
-            safe_print(f"无法获取更多文献ID", True)
+        Args:
+            query: 搜索查询语句
+            start_position: 起始位置(已获取的ID数量)
+            retmax: 要获取的最大ID数量
+            sort_param: 排序参数
             
-        return more_ids
+        Returns:
+            list: 文献ID列表
+        """
+        try:
+            def _esearch_more():
+                handle = Entrez.esearch(
+                    db="pubmed",
+                    term=query,
+                    retstart=start_position,  # 从这个位置开始获取
+                    retmax=retmax, 
+                    sort=sort_param
+                )
+                return Entrez.read(handle)
+                
+            # 使用更长的重试机制，因为这是额外获取
+            search_results = retry_function(_esearch_more, max_retries=5, delay=3)
+            
+            # 从结果中提取ID列表
+            more_ids = search_results.get("IdList", [])
+            return more_ids
+            
+        except Exception as e:
+            # 更详细的错误日志，帮助调试
+            safe_print(f"获取更多文献ID时出错 (位置 {start_position}, 数量 {retmax}): {e}", self.verbose)
+            import traceback
+            if self.verbose:
+                traceback.print_exc()
+            return []
     
+    def export_to_csv(self, publications, output_file=None):
+        """导出文献到CSV文件"""
+        if not publications:
+            safe_print("没有可导出的文献数据", self.verbose)
+            return False
+        
+        # 使用配置文件中的输出路径或提供的路径
+        file_path = output_file or self.config.get('output_file', 'pubmed_results.csv')
+        
+        try:
+            # 确保输出目录存在
+            output_dir = os.path.dirname(file_path)
+            if output_dir:
+                if not safe_create_dir(output_dir):
+                    # 如果创建目录失败，尝试使用默认位置
+                    safe_print(f"无法创建输出目录: {output_dir}，将使用当前目录", True)
+                    file_path = os.path.basename(file_path)
+            
+            # 收集字段并写入CSV
+            base_fields = [
+                'pmid', 'title', 'authors', 'affiliations', 
+                'journal', 'pub_date', 'doi', 'citations',
+                'keywords', 'abstract'
+            ]
+            
+            # 添加可能存在的附加字段(例如search_query)
+            all_fields = set()
+            for pub in publications:
+                all_fields.update(pub.keys())
+            
+            fieldnames = base_fields + [f for f in sorted(all_fields) if f not in base_fields]
+            
+            with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for pub in publications:
+                    # 确保所有字段都是字符串
+                    row = {k: str(pub.get(k, '')) for k in fieldnames}
+                    writer.writerow(row)
+            
+            safe_print(f"成功导出 {len(publications)} 篇文献到: {file_path}", self.verbose)
+            return True
+            
+        except Exception as e:
+            safe_print(f"导出CSV失败: {e}", self.verbose)
+            return False
+
+    def _process_article_batch_parallel(self, id_batch, max_workers=8):
+        """使用并行处理批量获取文章详情，提高处理效率
+        
+        Args:
+            id_batch: 要处理的文章ID批次
+            max_workers: 最大工作线程数
+            
+        Returns:
+            list: 处理后的文章信息列表
+        """
+        if not id_batch:
+            return []
+        
+        # 使用最佳分割策略处理大批量
+        # 如果ID数量大于300，分割成多个子批次，每个最多含300个ID
+        if len(id_batch) > 300:
+            safe_print(f"超大批量处理 {len(id_batch)} 篇文献，分成多个子批次", self.verbose)
+            sub_batches = [id_batch[i:i+300] for i in range(0, len(id_batch), 300)]
+        else:
+            # 优化处理大批次的效率
+            sub_batches = [id_batch]
+        
+        all_results = []
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 提交所有批次的处理任务
+            future_to_batch = {executor.submit(self._process_article_batch, batch): batch for batch in sub_batches}
+            
+            # 收集结果
+            for future in concurrent.futures.as_completed(future_to_batch):
+                batch = future_to_batch[future]
+                try:
+                    batch_results = future.result()
+                    all_results.extend(batch_results)
+                except Exception as e:
+                    safe_print(f"并行处理批次出错: {e}", self.verbose)
+        
+        safe_print(f"并行处理完成，获取到 {len(all_results)} 篇文献信息", self.verbose)
+        return all_results
+
     def _process_article_batch(self, id_batch):
-        """处理一批文章ID，获取详细信息"""
+        """处理一批文章ID，获取详细信息
+        
+        Args:
+            id_batch: 要处理的ID批次
+            
+        Returns:
+            list: 处理后的文章信息列表
+        """
         if not id_batch:
             return []
             
+        # 改进：如果ID批次过大，自动分割以提高稳定性
+        if len(id_batch) > 300:
+            safe_print(f"ID批次过大({len(id_batch)}篇)，自动分割处理", self.verbose)
+            results = []
+            for i in range(0, len(id_batch), 300):
+                sub_batch = id_batch[i:i+300]
+                sub_results = self._process_article_batch(sub_batch)
+                results.extend(sub_results)
+            return results
+            
         batch_ids_str = ",".join(id_batch)
+        safe_print(f"批量处理 {len(id_batch)} 篇文献: PMID {id_batch[0]}...{id_batch[-1]}", self.verbose)
+        
         try:
             def _efetch():
-                handle = Entrez.efetch(db="pubmed", id=batch_ids_str, retmode="xml")
+                # 增加Entrez参数以提高大批量处理的稳定性
+                handle = Entrez.efetch(db="pubmed", id=batch_ids_str, retmode="xml", retmax=len(id_batch))
                 return Entrez.read(handle)
             
-            records = retry_function(_efetch)
+            records = retry_function(_efetch, max_retries=5, delay=2)  # 增加重试次数
             
+            # 显示成功获取的记录数
+            pub_article_count = len(records.get('PubmedArticle', []))
+            safe_print(f"成功获取 {pub_article_count} 篇文献详情", self.verbose)
+            
+            # 优化大批量文章的处理速度
             result = []
             for article in records.get('PubmedArticle', []):
                 try:
@@ -539,11 +736,6 @@ class PubMedFetcher:
                 elif abstract_parts:
                     abstract = remove_html_tags(str(abstract_parts))
             
-            # 检查摘要是否为空
-            if not abstract.strip():
-                safe_print(f"文章 PMID:{pmid} 没有摘要", self.verbose)
-                return None  # 返回None表示这篇文章没有摘要
-            
             # 提取作者和单位
             authors = []
             affiliations = []
@@ -578,9 +770,13 @@ class PubMedFetcher:
             keywords = []
             self._extract_keywords(medline, keywords)
             
-            # 提取其他信息
+            # 提取出版日期
             pub_date = extract_publication_date(article, self.verbose)
+            
+            # 提取DOI
             doi = self._extract_doi(article)
+            
+            # 提取期刊名称
             journal_name = self._extract_journal_name(article_data)
             
             return {
@@ -599,25 +795,13 @@ class PubMedFetcher:
         except Exception as e:
             safe_print(f"提取文章信息出错: {e}", self.verbose)
             return None
-    
+            
     def _extract_keywords(self, medline, keywords):
         """提取关键词"""
-        # MeSH关键词
-        mesh_headings = medline.get('MeshHeadingList', [])
-        if mesh_headings:
-            for mesh in mesh_headings:
-                if isinstance(mesh, dict) and 'DescriptorName' in mesh:
-                    desc = mesh['DescriptorName']
-                    if hasattr(desc, '__str__'):
-                        keywords.append(remove_html_tags(str(desc)))
-        
-        # 作者关键词
         keyword_list = medline.get('KeywordList', [])
         for keyword_group in keyword_list:
-            if isinstance(keyword_group, list):
-                for keyword in keyword_group:
-                    if keyword and hasattr(keyword, '__str__'):
-                        keywords.append(remove_html_tags(str(keyword)))
+            for keyword in keyword_group:
+                keywords.append(keyword)
     
     def _extract_doi(self, article):
         """提取DOI"""
@@ -635,92 +819,6 @@ class PubMedFetcher:
         return remove_html_tags(
             journal.get('Title', journal.get('ISOAbbreviation', '未知期刊'))
         )
-    
-    def _get_citation_counts(self, publications):
-        """获取文章引用次数"""
-        if not publications:
-            return
-            
-        safe_print("获取文章引用次数...", self.verbose)
-        
-        with tqdm(total=len(publications), desc="获取引用", unit="篇") as pbar:
-            for pub in publications:
-                pmid = pub.get('pmid')
-                if not pmid:
-                    pbar.update(1)
-                    continue
-                
-                try:
-                    def _elink():
-                        handle = Entrez.elink(dbfrom="pubmed", db="pubmed", 
-                                            linkname="pubmed_pubmed_citedin", id=pmid)
-                        return Entrez.read(handle)
-                    
-                    link_results = retry_function(_elink, max_retries=2)
-                    
-                    citation_count = 0
-                    if link_results and len(link_results) > 0:
-                        linkset = link_results[0]
-                        if 'LinkSetDb' in linkset and linkset['LinkSetDb']:
-                            linkdb = linkset['LinkSetDb'][0]
-                            if 'Link' in linkdb:
-                                citation_count = len(linkdb['Link'])
-                    
-                    pub['citations'] = citation_count
-                    
-                except Exception as e:
-                    safe_print(f"获取引用次数出错 (PMID: {pmid}): {e}", self.verbose)
-                    pub['citations'] = 0
-                
-                pbar.update(1)
-                
-                # 添加延迟，避免请求过于频繁
-                time.sleep(0.3)
-    
-    def export_to_csv(self, publications, output_file=None):
-        """导出文献到CSV文件"""
-        if not publications:
-            safe_print("没有可导出的文献数据", self.verbose)
-            return False
-        
-        # 使用配置文件中的输出路径或提供的路径
-        file_path = output_file or self.config.get('output_file', 'pubmed_results.csv')
-        
-        try:
-            # 确保输出目录存在
-            output_dir = os.path.dirname(file_path)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            
-            # 收集字段并写入CSV
-            base_fields = [
-                'pmid', 'title', 'authors', 'affiliations', 
-                'journal', 'pub_date', 'doi', 'citations',
-                'keywords', 'abstract'
-            ]
-            
-            # 添加可能存在的附加字段(例如search_query)
-            all_fields = set()
-            for pub in publications:
-                all_fields.update(pub.keys())
-            
-            fieldnames = base_fields + [f for f in sorted(all_fields) if f not in base_fields]
-            
-            with open(file_path, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                
-                for pub in publications:
-                    # 确保所有字段都是字符串
-                    row = {k: str(pub.get(k, '')) for k in fieldnames}
-                    writer.writerow(row)
-            
-            safe_print(f"成功导出 {len(publications)} 篇文献到: {file_path}", self.verbose)
-            return True
-            
-        except Exception as e:
-            safe_print(f"导出CSV失败: {e}", self.verbose)
-            return False
 
 def main():
     """主程序入口"""
