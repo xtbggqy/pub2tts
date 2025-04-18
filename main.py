@@ -1,6 +1,6 @@
 """
 PubMed文献处理主程序
-一站式完成从文献检索到语音合成的全流程处理
+一站式完成从文献检索到HTML生成的全流程处理
 """
 import os
 import sys
@@ -17,7 +17,7 @@ try:
     from pub_search import PubMedFetcher
     from journal_enhancement import JournalEnhancer
     from llm_understand import LiteratureTranslator
-    from ali2tts_ai import TtsConverter
+    from html_viewer_core import HTMLViewerGenerator
 except ImportError as e:
     error(f"导入模块失败: {e}")
     print("请确保所有必要的程序文件在同一目录下")
@@ -46,14 +46,14 @@ def safe_print(msg, always_print=False):
 class ProgressDisplay:
     """进度显示管理器，固定在终端底部"""
     current_step = 0
-    total_steps = 5
-    step_names = ["文献检索", "期刊信息增强", "文献翻译与理解", "生成HTML文献浏览器", "文本转语音"]
+    total_steps = 4
+    step_names = ["文献检索", "期刊信息增强", "文献翻译与理解", "生成HTML文献浏览器"]
     start_time = None
     active = False
     lock = threading.Lock()
     animation_thread = None
     running = False
-    step_status = ["待处理", "待处理", "待处理", "待处理", "待处理"]
+    step_status = ["待处理", "待处理", "待处理", "待处理"]
     last_update = 0  # 上次更新时间
     status_message = ""  # 添加状态信息
     
@@ -186,12 +186,8 @@ class PubMedProcessor:
         ProgressDisplay.start()
         log(f"=== 文献处理流程开始 [{self.start_time.strftime('%Y-%m-%d %H:%M:%S')}] ===", True)
     
-    def run_full_process(self, skip_tts=False):
-        """运行完整的文献处理流程
-        
-        Args:
-            skip_tts: 是否跳过TTS步骤
-        """
+    def run_full_process(self):
+        """运行完整的文献处理流程"""
         try:
             # 步骤 1: 文献检索
             ProgressDisplay.update_step(1)
@@ -220,17 +216,6 @@ class PubMedProcessor:
                 ProgressDisplay.step_status[3] = "失败"
                 return False
             ProgressDisplay.step_status[3] = "完成"
-            
-            # 步骤 5: 文本转语音 (可选择跳过)
-            if not skip_tts:
-                ProgressDisplay.update_step(5)
-                if not self._run_tts_conversion():
-                    ProgressDisplay.step_status[4] = "失败"
-                    # 继续执行，只将状态标记为失败
-                ProgressDisplay.step_status[4] = "完成" if ProgressDisplay.step_status[4] != "失败" else "失败"
-            else:
-                ProgressDisplay.step_status[4] = "跳过"
-                log("\n=== 步骤 5: 文本转语音 [已跳过] ===", True)
             
             # 完成所有流程
             self._print_summary()
@@ -322,13 +307,6 @@ class PubMedProcessor:
                 log("已跳过HTML浏览器生成 (在配置中未启用)", True)
                 return True
                 
-            # 导入HTML生成器
-            try:
-                from html_viewer import HTMLViewerGenerator
-            except ImportError:
-                error("无法导入HTML浏览器生成器模块，请确保html_viewer.py文件存在")
-                return False
-                
             # 初始化HTML生成器
             generator = HTMLViewerGenerator(config_file=self.config_file, verbose=VERBOSE_OUTPUT)
             
@@ -358,28 +336,6 @@ class PubMedProcessor:
                 traceback.print_exc()
             return False
 
-    def _run_tts_conversion(self):
-        """运行文本转语音"""
-        log("\n=== 步骤 5: 文本转语音 ===", True)
-        try:
-            # 初始化TTS转换器
-            converter = TtsConverter(self.config_file, verbose=VERBOSE_OUTPUT, log_file=self.log_file)
-            
-            # 运行转换
-            if converter.run():
-                success("文本转语音完成")
-                return True
-            else:
-                error("语音合成失败，流程完成")
-                return True  # 流程完成
-            
-        except Exception as e:
-            error(f"文本转语音失败: {e}")
-            if VERBOSE_OUTPUT:
-                import traceback
-                traceback.print_exc()
-            return False
-    
     def _run_journal_visualization(self):
         """单独运行期刊可视化"""
         log("\n=== 期刊数据可视化 ===", True)
@@ -432,8 +388,7 @@ class PubMedProcessor:
                 'enhance': (self._run_journal_enhancement, 2),
                 'translate': (self._run_llm_understand, 3),
                 'html': (self._run_html_generator, 4),
-                'tts': (self._run_tts_conversion, 5),
-                'viz': (self._run_journal_visualization, 6)
+                'viz': (self._run_journal_visualization, 5)
             }
             
             if step not in steps:
@@ -495,20 +450,16 @@ def main():
     parser = argparse.ArgumentParser(description='PubMed文献处理全流程工具')
     # 添加命令行参数
     parser.add_argument('-s', '--steps', nargs='+', 
-                        choices=['search', 'enhance', 'translate', 'html', 'tts', 'viz'], 
+                        choices=['search', 'enhance', 'translate', 'html', 'viz'], 
                         help='选择要执行的一个或多个步骤，例如: -s search enhance')
     parser.add_argument('-c', '--config', default='pub.txt', 
                         help='配置文件路径(默认: pub.txt)')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='输出详细日志信息')
-    parser.add_argument('--no-tts', action='store_true',
-                        help='跳过TTS步骤，只运行前三个步骤(检索、增强、翻译)')
     parser.add_argument('-l', '--log', default='out/pub.log',
                         help='日志文件路径(默认: out/pub.log)')
     parser.add_argument('--no-log', action='store_true',
                         help='禁用日志文件，只输出到终端')
-    parser.add_argument('--pure-text', action='store_true',
-                        help='生成纯文本内容文件，仅包含要转换为语音的文本')
     parser.add_argument('--viz-only', action='store_true',
                         help='仅运行可视化功能，使用已有的增强结果')
     args = parser.parse_args()
@@ -525,15 +476,6 @@ def main():
     
     try:
         processor = PubMedProcessor(args.config, log_file)
-        
-        # 检查是否只生成纯文本
-        if args.pure_text:
-            log("仅生成纯文本内容文件", True)
-            # 初始化TTS转换器
-            converter = TtsConverter(args.config, verbose=VERBOSE_OUTPUT, log_file=log_file)
-            # 生成纯文本
-            converter.prepare_pure_text()
-            return
         
         # 检查是否只运行可视化
         if args.viz_only:
@@ -552,8 +494,7 @@ def main():
                 'enhance': (processor._run_journal_enhancement, 2),
                 'translate': (processor._run_llm_understand, 3),
                 'html': (processor._run_html_generator, 4),
-                'tts': (processor._run_tts_conversion, 5),
-                'viz': (processor._run_journal_visualization, 6)
+                'viz': (processor._run_journal_visualization, 5)
             }
             
             # 按顺序执行选定的步骤
@@ -573,12 +514,9 @@ def main():
                 else:
                     ProgressDisplay.step_status[step_idx-1] = "完成"
                     success(f"步骤 {step} 完成")
+            return operation_success
         else:
-            if args.no_tts:
-                log("执行前四个步骤，跳过语音合成", True)
-                processor.run_full_process(skip_tts=True)
-            else:
-                processor.run_full_process()
+            processor.run_full_process()
             
     except Exception as e:
         ProgressDisplay.stop()  # 确保停止进度显示

@@ -1,7 +1,7 @@
 """
 文献内容理解增强工具
 读取CSV文件中的文献数据，调用AI对标题、关键词和摘要进行翻译和优化,
-并将结果输出到新的CSV文件和文本文件中。
+并将结果输出到新的CSV文件中。
 """
 import os
 import csv
@@ -101,7 +101,6 @@ class LiteratureProcessor:
         config = {
             'input_llm': 'pubmed_enhanced.csv',
             'output_llm': 'pubmed_enhanced_llm.csv',
-            'output_llm2': 'pre4tts.txt',
             'max_articles': 5,
             'ai_model': 'qwen-plus',
             'ai_timeout': 60,
@@ -174,8 +173,7 @@ class LiteratureProcessor:
                 
                 f.write("# 输入输出文件\n")
                 f.write(f"input_llm={config['input_llm']}\n")
-                f.write(f"output_llm={config['output_llm']}\n")
-                f.write(f"output_llm2={config['output_llm2']}\n\n")
+                f.write(f"output_llm={config['output_llm']}\n\n")
                 
                 f.write("# AI模型设置\n")
                 f.write(f"ai_model={config['ai_model']}\n")
@@ -277,55 +275,6 @@ class LiteratureProcessor:
             )
             return False
     
-    @safe_file_operation(operation_type="write")
-    def save_to_txt(self, articles, file_path):
-        """保存文章到TXT文件(用于TTS)
-        
-        Args:
-            articles: 文章列表
-            file_path: 保存路径
-            
-        Returns:
-            是否成功
-        """
-        if not articles:
-            safe_print("警告: 没有文章可保存", True)
-            return False
-            
-        try:
-            # 确保输出目录存在
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            
-            with open(file_path, 'w', encoding='utf-8') as f:
-                for i, article in enumerate(articles):
-                    # 标题
-                    title = article.get('translated_title', '')
-                    if title:
-                        f.write(f"标题：{title}\n\n")
-                    
-                    # 关键词
-                    keywords = article.get('translated_keywords', '')
-                    if keywords:
-                        f.write(f"关键词：{keywords}\n\n")
-                    
-                    # 摘要
-                    abstract = article.get('translated_abstract', '')
-                    if abstract:
-                        f.write(f"摘要：{abstract}\n\n")
-                    
-                    # 分隔符
-                    f.write("=====================================\n\n")
-            
-            safe_print(f"已保存 {len(articles)} 篇文章到TXT文件 {file_path}", True)
-            return True
-        except Exception as e:
-            ErrorTracker().track_error(
-                "TXTWriteError", 
-                f"保存TXT文件失败: {str(e)}",
-                source="LiteratureProcessor.save_to_txt"
-            )
-            return False
-    
     def process(self):
         """处理文献，读取、翻译并保存"""
         start_time = time.time()
@@ -350,10 +299,6 @@ class LiteratureProcessor:
             # 保存结果到CSV
             output_csv = self.config['output_llm']
             self.save_to_csv(translated_articles, output_csv)
-            
-            # 保存结果到TXT（用于TTS）
-            output_txt = self.config['output_llm2']
-            self.save_to_txt(translated_articles, output_txt)
             
             # 打印统计信息
             self.translator.print_statistics()

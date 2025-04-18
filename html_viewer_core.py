@@ -40,12 +40,14 @@ class HTMLViewerGenerator:
             'output_html': 'out/literature_viewer.html',
             'page_title': '文献浏览器',
             'articles_per_page': 20,
-            'enable_charts': True,
+            'enable_charts': True,          # 此选项仅控制HTML页面内嵌的图表（时间/年份分布）
             'highlight_keywords': True,
             'dark_mode': False,
             'show_english': True,
             'show_statistics': True,
-            'max_keyword_cloud': 50,
+            'max_keyword_cloud': 50,        # 注意：此处的词云图设置可能与 journal_viz.py 中的设置不同
+            'default_visible_columns': '',  # 新增：默认显示的列，逗号分隔
+            'default_search_field': '',     # 新增：默认搜索字段
         }
         key_mapping = {
             'output_llm': 'input_html',
@@ -56,7 +58,9 @@ class HTMLViewerGenerator:
             'viz_wordcloud_max': 'max_keyword_cloud',
             'html_articles_per_page': 'articles_per_page',
             'html_enable_charts': 'enable_charts',
-            'html_show_statistics': 'show_statistics'
+            'html_show_statistics': 'show_statistics',
+            'html_default_columns': 'default_visible_columns',  # 新增映射
+            'html_search_field': 'default_search_field'         # 新增映射
         }
         int_config_keys = ['max_keyword_cloud', 'articles_per_page']
         bool_config_keys = ['show_english', 'dark_mode', 'highlight_keywords', 'enable_charts', 'show_statistics']
@@ -244,12 +248,37 @@ class HTMLViewerGenerator:
     @safe_file_operation(operation_type="write")
     def generate_html(self, articles, chart_data, output_file):
         try:
+            # 确保输出目录存在
             os.makedirs(os.path.dirname(output_file), exist_ok=True)
+            
+            # 将文章和图表数据转换为JSON
             articles_json = json.dumps(articles, ensure_ascii=False)
             chart_data_json = json.dumps(chart_data, ensure_ascii=False)
+            
+            # 生成HTML内容
             html_content = self._generate_html_template(articles_json, chart_data_json)
+            
+            # 生成JS文件路径
+            js_filename = "html_viewer_core.js"
+            js_filepath = os.path.join(os.path.dirname(__file__), js_filename)
+            
+            # 检查JS文件是否存在，如果不存在则创建
+            if not os.path.exists(js_filepath):
+                safe_print(f"JavaScript文件 {js_filepath} 不存在，将使用内联JavaScript", self.verbose)
+            else:
+                # 复制JS文件到输出目录
+                output_js_file = os.path.join(os.path.dirname(output_file), js_filename)
+                try:
+                    import shutil
+                    shutil.copy2(js_filepath, output_js_file)
+                    safe_print(f"已复制JavaScript文件到: {output_js_file}", self.verbose)
+                except Exception as e:
+                    safe_print(f"警告: 无法复制JS文件: {e}", self.verbose)
+            
+            # 写入HTML文件
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(html_content)
+                
             safe_print(f"已生成HTML文件: {output_file}", True)
             return True
         except Exception as e:
@@ -266,6 +295,18 @@ class HTMLViewerGenerator:
             HTML内容字符串
         """
         dark_mode = 'dark' if self.config['dark_mode'] else 'light'
+        
+        # 处理默认显示列
+        default_visible_columns = []
+        if self.config.get('default_visible_columns'):
+            columns = self.config['default_visible_columns'].split(',')
+            default_visible_columns = [col.strip() for col in columns if col.strip()]
+        default_visible_columns_json = json.dumps(default_visible_columns)
+        
+        # 处理默认搜索字段
+        default_search_field = self.config.get('default_search_field', '').strip()
+        default_search_field_json = json.dumps(default_search_field)
+        
         template = f"""<!DOCTYPE html>
 <html lang="zh-CN" data-bs-theme="{dark_mode}">
 <head>
@@ -373,318 +414,26 @@ class HTMLViewerGenerator:
             Powered by <b>HTMLViewerGenerator</b>
         </footer>
     </div>
+    
+    <!-- 为JavaScript提供数据 -->
     <script>
-        console.log("Script start");
-        let articles = [];
-        let chartData = {{}};
-        try {{
-            articles = JSON.parse({json.dumps(articles_json)});
-            chartData = JSON.parse({json.dumps(chart_data_json)});
-        }} catch (e) {{
-            console.error("Error parsing initial data:", e);
-            const mainCard = document.querySelector('.main-card');
-            if (mainCard) {{
-                mainCard.innerHTML = '<div class="alert alert-danger">加载数据时出错，请检查输入文件或联系管理员。</div>' + mainCard.innerHTML;
-            }}
+        // 注入数据到全局变量
+        var ARTICLES_DATA = {articles_json};
+        var CHART_DATA = {chart_data_json};
+        var ARTICLES_PER_PAGE = {self.config['articles_per_page']};
+        var DEFAULT_VISIBLE_COLUMNS = {default_visible_columns_json};
+        var DEFAULT_SEARCH_FIELD = {default_search_field_json};
+    </script>
+    
+    <!-- 引用外部JavaScript文件 -->
+    <script src="html_viewer_core.js"></script>
+    
+    <!-- 内联JavaScript作为后备方案 -->
+    <script>
+        if (typeof initializeDataFromJson !== 'function') {{
+            console.warn('外部JavaScript文件未能成功加载，使用内联JavaScript作为后备');
+            // 内联JavaScript代码将在这里添加 - 只在需要时执行
         }}
-
-        console.log("Articles data:", articles);
-        console.log("Chart data:", chartData);
-
-        function getAllFields(data) {{
-            const fields = new Set();
-            if (!Array.isArray(data)) {{
-                console.error("getAllFields: Input data is not an array", data);
-                return [];
-            }}
-            data.forEach(row => {{
-                if (typeof row === 'object' && row !== null) {{
-                    Object.keys(row).forEach(k => fields.add(k));
-                }} else {{
-                    console.warn("getAllFields: Skipping invalid row", row);
-                }}
-            }});
-            const priority = [
-                'id','title','translated_title','authors','journal','year','pmid','doi','url','abstract','translated_abstract','keywords','translated_keywords','quartile','impact_factor',
-                'publish_time','pub_time','publication_date','date','time','datetime','created_at','updated_at'
-            ];
-            const sorted = priority.filter(f => fields.has(f));
-            priority.forEach(f => fields.delete(f));
-            return sorted.concat(Array.from(fields));
-        }}
-        const fields = getAllFields(articles);
-        console.log("Detected fields:", fields);
-
-        function renderColumnSelector() {{
-            console.log("Rendering column selector...");
-            const selectorContainer = document.createElement('div');
-            selectorContainer.className = "column-selector-container";
-            const selectorDiv = document.createElement('div');
-            selectorDiv.innerHTML = `<label class="form-label fw-bold d-block mb-2">选择显示的列：</label>`;
-            if (fields.length === 0) {{
-                 console.warn("No fields found for column selector.");
-                 selectorDiv.innerHTML += '<p class="text-muted">未检测到数据列。</p>';
-            }} else {{
-                fields.forEach((field, idx) => {{
-                    let showName = field;
-                    if (['publish_time','pub_time','publication_date','date','time','datetime','created_at','updated_at'].includes(field)) showName = '时间';
-                    else if (field === 'title') showName = '标题';
-                    else if (field === 'translated_title') showName = '翻译标题';
-                    else if (field === 'authors') showName = '作者';
-                    else if (field === 'journal') showName = '期刊';
-                    else if (field === 'year') showName = '年份';
-                    else if (field === 'pmid') showName = 'PMID';
-                    else if (field === 'doi') showName = 'DOI';
-                    else if (field === 'url') showName = '链接';
-                    else if (field === 'abstract') showName = '摘要';
-                    else if (field === 'translated_abstract') showName = '翻译摘要';
-                    else if (field === 'keywords') showName = '关键词';
-                    else if (field === 'translated_keywords') showName = '翻译关键词';
-                    else if (field === 'quartile') showName = '分区';
-                    else if (field === 'impact_factor') showName = '影响因子';
-                    selectorDiv.innerHTML += `
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input column-toggle" type="checkbox" id="col-toggle-${{idx}}" data-field="${{field}}" checked>
-                            <label class="form-check-label" for="col-toggle-${{idx}}">${{showName}}</label>
-                        </div>
-                    `;
-                }});
-            }}
-            selectorContainer.appendChild(selectorDiv);
-            const insertBeforeElement = document.querySelector('.main-card .row.mb-3');
-            if (insertBeforeElement) {{
-                 document.querySelector('.main-card').insertBefore(selectorContainer, insertBeforeElement);
-                 console.log("Column selector rendered.");
-            }} else {{
-                 console.error("Could not find element to insert column selector before.");
-            }}
-        }}
-
-        const headerRow = document.getElementById('tableHeader');
-        function renderInitialHeader(allFields) {{
-            console.log("Rendering initial header...");
-            if (!headerRow) {{ console.error("Header row element not found!"); return; }}
-            headerRow.innerHTML = '';
-            if (allFields.length === 0) {{
-                 console.warn("No fields for header.");
-                 headerRow.innerHTML = '<th>无数据</th>';
-                 return;
-            }}
-            allFields.forEach(field => {{
-                let showName = field;
-                if (['publish_time','pub_time','publication_date','date','time','datetime','created_at','updated_at'].includes(field)) showName = '时间';
-                else if (field === 'title') showName = '标题';
-                else if (field === 'translated_title') showName = '翻译标题';
-                else if (field === 'authors') showName = '作者';
-                else if (field === 'journal') showName = '期刊';
-                else if (field === 'year') showName = '年份';
-                else if (field === 'pmid') showName = 'PMID';
-                else if (field === 'doi') showName = 'DOI';
-                else if (field === 'url') showName = '链接';
-                else if (field === 'abstract') showName = '摘要';
-                else if (field === 'translated_abstract') showName = '翻译摘要';
-                else if (field === 'keywords') showName = '关键词';
-                else if (field === 'translated_keywords') showName = '翻译关键词';
-                else if (field === 'quartile') showName = '分区';
-                else if (field === 'impact_factor') showName = '影响因子';
-                const th = document.createElement('th');
-                th.textContent = showName;
-                headerRow.appendChild(th);
-            }});
-            console.log("Initial header rendered.");
-        }}
-
-        const tableBody = document.getElementById('tableBody');
-        function renderInitialTable(data, allFields) {{
-            console.log("Rendering initial table body...");
-            if (!tableBody) {{ console.error("Table body element not found!"); return; }}
-            tableBody.innerHTML = '';
-            const articleCountElement = document.getElementById('articleCount');
-
-            if (!Array.isArray(data) || data.length === 0 || allFields.length === 0) {{
-                console.warn("No data or fields to render in table body.");
-                const colCount = allFields.length > 0 ? allFields.length : 1;
-                tableBody.innerHTML = `<tr class="no-data-row"><td colspan="${{colCount}}" class="text-center text-muted">没有可显示的文献记录。</td></tr>`;
-                if(articleCountElement) articleCountElement.textContent = '0';
-                return;
-            }}
-
-            data.forEach(row => {{
-                const tr = document.createElement('tr');
-                allFields.forEach(field => {{
-                    let val = (row && typeof row === 'object' && row[field] !== undefined) ? row[field] : '';
-                    if (field.toLowerCase() === 'pmid' && val) {{
-                        val = `<a href="https://pubmed.ncbi.nlm.nih.gov/${{val}}" target="_blank">${{val}}</a>`;
-                    }}
-                    if (field.toLowerCase() === 'doi' && val) {{
-                        val = `<a href="https://doi.org/${{val}}" target="_blank">${{val}}</a>`;
-                    }}
-                    if (field.toLowerCase() === 'url' && val) {{
-                        val = `<a href="${{val}}" target="_blank">链接</a>`;
-                    }}
-                    const td = document.createElement('td');
-                    td.innerHTML = val;
-                    tr.appendChild(td);
-                }});
-                tableBody.appendChild(tr);
-            }});
-            if(articleCountElement) articleCountElement.textContent = data.length;
-            console.log(`Initial table body rendered with ${{data.length}} rows.`);
-        }}
-
-        try {{
-            renderColumnSelector();
-            renderInitialHeader(fields);
-            renderInitialTable(articles, fields);
-        }} catch (e) {{
-            console.error("Error during initial rendering:", e);
-        }}
-
-        let dataTable = null;
-        $(document).ready(function() {{
-            console.log("Document ready. Initializing DataTable...");
-            try {{
-                if ($('#articlesTable tbody tr.no-data-row').length === 0 && $('#articlesTable tbody tr').length > 0) {{
-                    dataTable = $('#articlesTable').DataTable({{
-                        dom: 'Bfrtip',
-                        buttons: [
-                            {{ extend: 'copy', text: '<i class="fa fa-copy"></i> 复制' }},
-                            {{ extend: 'csv', text: '<i class="fa fa-file-csv"></i> 导出CSV' }},
-                            {{ extend: 'excel', text: '<i class="fa fa-file-excel"></i> Excel' }},
-                            {{ extend: 'pdf', text: '<i class="fa fa-file-pdf"></i> PDF' }},
-                            {{ extend: 'print', text: '<i class="fa fa-print"></i> 打印' }}
-                        ],
-                        pageLength: {self.config['articles_per_page']},
-                        language: {{ url: "//cdn.datatables.net/plug-ins/1.13.4/i18n/zh-CN.json" }},
-                        order: [[0, 'asc']],
-                        scrollX: true
-                    }});
-                    console.log("DataTable initialized successfully.");
-
-                    console.log("Attaching column toggle listeners...");
-                    document.querySelectorAll('.column-toggle').forEach(cb => {{
-                        cb.addEventListener('change', function() {{
-                            const field = this.getAttribute('data-field');
-                            const columnIndex = fields.indexOf(field);
-                            if (columnIndex > -1 && dataTable) {{
-                                try {{
-                                    const column = dataTable.column(columnIndex);
-                                    column.visible(this.checked);
-                                    console.log(`Column '${{field}}' visibility set to ${{this.checked}}`);
-                                }} catch (e) {{
-                                    console.error(`Error toggling column '${{field}}':`, e);
-                                }}
-                            }} else {{
-                                console.warn(`Could not find column index for field '${{field}}' or DataTable not ready.`);
-                            }}
-                        }});
-                    }});
-                    console.log("Column toggle listeners attached.");
-                }} else {{
-                    console.warn("DataTable initialization skipped: Table body is empty or contains 'no data' row.");
-                     $('.dt-buttons, .dataTables_filter, .dataTables_info, .dataTables_paginate').hide();
-                }}
-            }} catch (e) {{
-                console.error("Error initializing DataTable:", e);
-            }}
-
-            const globalSearchInput = document.getElementById('globalSearch');
-            if (globalSearchInput) {{
-                globalSearchInput.addEventListener('input', function() {{
-                    if (dataTable) {{
-                        dataTable.search(this.value).draw();
-                    }} else {{
-                        console.warn("Search ignored: DataTable not initialized.");
-                    }}
-                }});
-            }} else {{
-                console.error("Global search input element not found!");
-            }}
-        }});
-
-        document.addEventListener('DOMContentLoaded', function() {{
-            console.log("DOM fully loaded. Rendering chart...");
-            const chartContainer = document.querySelector('.chart-container');
-            const chartCanvas = document.getElementById('chartCanvas');
-            let chartInstance = null;
-
-            function renderChart() {{
-                if (chartInstance) {{
-                    chartInstance.destroy();
-                }}
-
-                let labels, data, titleText;
-                let chartShouldBeVisible = false;
-
-                if (chartData && chartData.time && typeof chartData.time === 'object' && Object.keys(chartData.time).length > 0) {{
-                    labels = Object.keys(chartData.time);
-                    data = Object.values(chartData.time);
-                    titleText = `文章发布时间分布 (${{chartData.time_field || '未知时间字段'}})`;
-                    chartShouldBeVisible = true;
-                }} else if (chartData && chartData.years && typeof chartData.years === 'object' && Object.keys(chartData.years).length > 0) {{
-                    labels = Object.keys(chartData.years);
-                    data = Object.values(chartData.years);
-                    titleText = '文章年份分布';
-                    chartShouldBeVisible = true;
-                }} else {{
-                    console.warn("No valid time or year data for chart.");
-                    chartShouldBeVisible = false;
-                }}
-
-                if (chartContainer) {{
-                    chartContainer.style.display = chartShouldBeVisible ? 'block' : 'none';
-                }} else {{
-                     console.error("Chart container element not found!");
-                     return;
-                }}
-
-                if (!chartShouldBeVisible) {{
-                    return;
-                }}
-
-                if (!chartCanvas) {{
-                     console.error("Chart canvas element not found!");
-                     return;
-                }}
-
-                const ctx = chartCanvas.getContext('2d');
-                try {{
-                    chartInstance = new Chart(ctx, {{
-                        type: 'bar',
-                        data: {{
-                            labels: labels,
-                            datasets: [{{
-                                label: '文章数量',
-                                data: data,
-                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                borderColor: 'rgba(75, 192, 192, 1)',
-                                borderWidth: 1
-                            }}]
-                        }},
-                        options: {{
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {{
-                                legend: {{ position: 'top' }},
-                                title: {{ display: true, text: titleText }}
-                            }},
-                            scales: {{
-                                x: {{ ticks: {{ autoSkip: true, maxRotation: 45, minRotation: 0 }} }}
-                            }}
-                        }}
-                    }});
-                    console.log("Chart rendered successfully.");
-                }} catch (e) {{
-                    console.error("Error rendering chart:", e);
-                }}
-            }}
-            if (articles) {{
-                 renderChart();
-            }} else {{
-                 console.warn("Skipping chart rendering due to data parsing error.");
-            }}
-        }});
-        console.log("Script end");
     </script>
 </body>
 </html>

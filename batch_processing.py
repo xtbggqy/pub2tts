@@ -78,7 +78,7 @@ class BatchProcessor:
                 futures.append(future)
             
             # 使用tqdm显示进度条
-            with tqdm(total=len(batches), desc="批量处理", unit="批") as pbar:
+            with tqdm(total=len(batches), desc="批量处理", unit="批", gui=False) as pbar: # 明确禁用 GUI 模式
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         batch_result = future.result()
@@ -111,7 +111,7 @@ class BatchProcessor:
                 futures.append(future)
             
             # 使用tqdm显示进度条
-            with tqdm(total=len(articles), desc="翻译文献", unit="篇") as pbar:
+            with tqdm(total=len(articles), desc="翻译文献", unit="篇", gui=False) as pbar: # 明确禁用 GUI 模式
                 for future in concurrent.futures.as_completed(futures):
                     try:
                         result = future.result()

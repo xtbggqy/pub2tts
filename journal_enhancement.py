@@ -11,6 +11,7 @@ import concurrent.futures
 from datetime import datetime
 from tqdm import tqdm
 import threading
+import traceback  # 添加导入
 
 # 导入日志工具，如果可用
 try:
@@ -297,7 +298,6 @@ class JournalEnhancer:
                 safe_print(f"期刊数据文件不存在: {journal_data_path}", True)
         except Exception as e:
             safe_print(f"加载期刊数据出错: {e}", True)
-            import traceback
             traceback.print_exc()
         
         return journal_data
@@ -371,7 +371,8 @@ class JournalEnhancer:
                       disable=not self.verbose, # 非详细模式下禁用tqdm
                       leave=False,  # 完成后不留下进度条
                       ncols=80,     # 固定宽度
-                      bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]') as pbar:
+                      bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
+                      gui=False) as pbar: # 明确禁用 GUI 模式
                 
                 # 并行处理文章
                 with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
@@ -417,7 +418,6 @@ class JournalEnhancer:
             
         except Exception as e:
             safe_print(f"增强文章信息出错: {e}", True)
-            import traceback
             traceback.print_exc()
             return []
     
@@ -449,39 +449,41 @@ class JournalEnhancer:
             return (False, journal_name if 'journal_name' in locals() else None)
     
     def _generate_visualizations(self, articles, input_file):
-        """生成期刊数据可视化"""
+        """生成期刊数据可视化图表（作为独立的图像文件）"""
         # 检查是否启用可视化和是否可用
         if not self.config.get('viz_enabled', True) or not VISUALIZATION_AVAILABLE:
             if not VISUALIZATION_AVAILABLE:
-                safe_print("警告: 可视化功能不可用，请安装matplotlib", self.verbose)
+                safe_print("警告: 可视化功能不可用，请安装matplotlib和wordcloud", self.verbose)
+            else:
+                safe_print("可视化功能已在配置中禁用", self.verbose)
             return
-        
+
         try:
             # 初始化可视化工具
             visualizer = JournalVisualizer(
                 config_file=self.config_file,
                 verbose=self.verbose
             )
-            
-            # 使用增强后的数据生成可视化
-            safe_print("正在生成期刊数据可视化...", True)
-            output_file = self.config.get('output_sort')
-            
+
+            # 使用增强后的数据生成可视化图表文件
+            safe_print("正在生成期刊数据可视化图表文件...", True)
+            output_file = self.config.get('output_sort')  # 使用增强后的文件作为可视化输入
+
             viz_start_time = time.time()
+            # 调用可视化函数，它会读取 output_file 并生成图像
             chart_files = visualizer.visualize_journal_data(output_file)
             viz_time = time.time() - viz_start_time
-            
+
             if chart_files:
-                safe_print(f"成功生成 {len(chart_files)} 个期刊数据图表，用时{viz_time:.2f}秒", True)
+                safe_print(f"成功生成 {len(chart_files)} 个期刊数据图表文件，用时{viz_time:.2f}秒", True)
                 for chart in chart_files:
                     safe_print(f"  - {chart}", self.verbose)
             else:
-                safe_print("未能生成任何图表", self.verbose)
+                safe_print("未能生成任何图表文件", self.verbose)
         except Exception as e:
             safe_print(f"期刊可视化生成失败: {e}", self.verbose)
-            import traceback
             traceback.print_exc()
-    
+
     def _get_journal_info(self, journal_name):
         """获取期刊信息，包括影响因子和分区"""
         if not journal_name or not self.journal_data:
@@ -850,7 +852,6 @@ def main():
             
     except Exception as e:
         safe_print(f"程序运行出错: {e}", True)
-        import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":
